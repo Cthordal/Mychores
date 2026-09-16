@@ -1,5 +1,4 @@
 const STORAGE_KEY = "mychores-prototype-v1";
-const PARENT_PIN = "1234";
 
 const translations = {
   da: {
@@ -33,6 +32,18 @@ translations.da.editChild = "Redigér"; translations.en.editChild = "Edit";
 translations.da.removeChild = "Fjern"; translations.en.removeChild = "Remove";
 translations.da.removeConfirm = "Vil du fjerne {name}?"; translations.en.removeConfirm = "Remove {name}?";
 translations.da.removeWarning = "Point, historik, pligter og mål bliver også fjernet."; translations.en.removeWarning = "Their points, history, chores and goal will also be removed.";
+translations.da.createParentPin = "Opret forældrekode"; translations.en.createParentPin = "Create parent PIN";
+translations.da.createParentPinCopy = "Vælg en 4-cifret kode til Forældre."; translations.en.createParentPinCopy = "Choose a 4-digit PIN for Parent Mode.";
+translations.da.enterPin = "Enter PIN:"; translations.en.enterPin = "Enter PIN:";
+translations.da.confirmPin = "Bekræft PIN:"; translations.en.confirmPin = "Confirm PIN:";
+translations.da.createPin = "Opret kode"; translations.en.createPin = "Create PIN";
+translations.da.openParent = "Åbn forældre"; translations.en.openParent = "Open parent mode";
+translations.da.incorrectPin = "Forkert kode"; translations.en.incorrectPin = "Incorrect PIN";
+translations.da.changePin = "Skift forældrekode"; translations.en.changePin = "Change parent PIN";
+translations.da.currentPin = "Nuværende PIN"; translations.en.currentPin = "Current PIN";
+translations.da.newPin = "Ny PIN"; translations.en.newPin = "New PIN";
+translations.da.confirmNewPin = "Bekræft ny PIN"; translations.en.confirmNewPin = "Confirm new PIN";
+translations.da.savePin = "Gem kode"; translations.en.savePin = "Save PIN";
 
 const categoryIcons = { Køkken: "🍽️", Værelse: "🧸", Tøj: "👕", Mad: "🍳", Skole: "🎒", Familie: "🤝", Sport: "⚽", Kitchen: "🍽️", Room: "🧸", Clothes: "👕", Food: "🍳", School: "🎒", Family: "🤝", Sports: "⚽" };
 const categoryLabels = { Køkken: { da: "Køkken", en: "Kitchen" }, Værelse: { da: "Værelse", en: "Room" }, Tøj: { da: "Tøj", en: "Clothes" }, Mad: { da: "Mad", en: "Food" }, Skole: { da: "Skole", en: "School" }, Familie: { da: "Familie", en: "Family" }, Sport: { da: "Sport", en: "Sports" } };
@@ -57,7 +68,7 @@ const defaultRewards = [
 ];
 
 const avatarChoices = ["⚽", "🏀", "🎮", "🚀", "🦊", "🐼", "🐯", "🦁", "🦄", "⭐", "⚡", "🔥", "🌈", "🎧", "🛹", "🍀"];
-const defaultState = { language: "da", selectedChild: null, mode: "child", catalogue: defaultCatalogue, rewards: defaultRewards, children: [] };
+const defaultState = { language: "da", selectedChild: null, mode: "child", parentPin: "1234", parentPinChanged: false, catalogue: defaultCatalogue, rewards: defaultRewards, children: [] };
 
 let state;
 let toastTimer;
@@ -74,6 +85,7 @@ function choreName(chore) { return chore.nameData ? localized(chore.nameData) : 
 function categoryText(category) { return localized(categoryLabels[category] || category); }
 function deadlineText(chore) { if (chore.period === "weekly") return `${t("mustBeDone")} ${t("beforeSunday")}`; if (chore.catalogueId === "dishwasher-empty" || chore.name === "Tøm opvaskemaskinen") return t("noNeed"); if (chore.catalogueId === "table" || chore.name === "Dæk bord") return t("beforeEating"); if (chore.catalogueId === "school-bag" || chore.name === "Pak skoletasken") return t("beforeBed"); return chore.deadline || t("mustDo"); }
 function weekKey(date = new Date()) { const copy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())); const day = copy.getUTCDay() || 7; copy.setUTCDate(copy.getUTCDate() + 4 - day); const yearStart = new Date(Date.UTC(copy.getUTCFullYear(), 0, 1)); const week = Math.ceil((((copy - yearStart) / 86400000) + 1) / 7); return `${copy.getUTCFullYear()}-${week}`; }
+function normalizeParentPin(savedState) { const explicitlyChanged = savedState.parentPinChanged === true; return { parentPin: explicitlyChanged && /^\d{4}$/.test(savedState.parentPin || "") ? savedState.parentPin : "1234", parentPinChanged: explicitlyChanged }; }
 
 function migrateChore(old, childId) {
   const catalogue = defaultCatalogue.find(item => old.catalogueId === item.id || old.id.includes(item.id.split("-")[0]) || localized(item.name).toLowerCase() === String(old.name).toLowerCase());
@@ -86,7 +98,8 @@ function loadState() {
     if (!saved) return clone(defaultState);
     const old = JSON.parse(saved);
     const legacyChildren = Array.isArray(old.children) ? old.children : Object.entries(old.children || {}).map(([id, child]) => ({ ...child, id, avatar: child.avatar || (id === "vega" ? "⭐" : "⚡") }));
-    const next = { ...clone(defaultState), ...old, children: legacyChildren, language: old.language || localStorage.getItem("mychores-language") || "da", catalogue: old.catalogue?.length ? old.catalogue : clone(defaultCatalogue), rewards: old.rewards?.length ? old.rewards : clone(defaultRewards) };
+    const pinState = normalizeParentPin(old);
+    const next = { ...clone(defaultState), ...old, ...pinState, children: legacyChildren, language: old.language || localStorage.getItem("mychores-language") || "da", catalogue: old.catalogue?.length ? old.catalogue : clone(defaultCatalogue), rewards: old.rewards?.length ? old.rewards : clone(defaultRewards) };
     next.selectedChild = next.children.some(child => child.id === old.selectedChild) ? old.selectedChild : next.children[0]?.id || null;
     next.children.forEach((child, index) => {
       child.id = child.id || `child-${Date.now()}-${index}`;
@@ -113,6 +126,7 @@ function showCelebration() { const toast = document.querySelector("#toast"); toa
 function openProfileGate() { document.querySelector("#profile-gate").classList.add("visible"); }
 function closeProfileGate() { document.querySelector("#profile-gate").classList.remove("visible"); sessionStorage.setItem("mychores-profile-selected", "true"); }
 function hasFamily() { return state.children.length > 0; }
+function openParentPinDialog() { document.querySelector("#pin-title").textContent = state.language === "da" ? "Forældrekode" : "Parent PIN"; document.querySelector("#pin-copy").textContent = t("pinCopy"); document.querySelector("#pin-label").textContent = t("enterPin"); document.querySelectorAll(".pin-confirm-field").forEach(element => element.classList.add("hidden")); document.querySelector("#pin-submit").textContent = t("openParent"); document.querySelector("#pin-form").dataset.setup = "false"; document.querySelector("#pin-form").reset(); document.querySelector("#pin-dialog").showModal(); document.querySelector("#pin-input").focus(); }
 
 function applyTranslations() {
   document.documentElement.lang = state.language;
@@ -125,9 +139,7 @@ function applyTranslations() {
   document.querySelector("#profile-gate-title").nextElementSibling.textContent = t("chooseProfile");
   document.querySelector(".profile-return").textContent = `⇄ ${t("switchProfile")}`;
   document.querySelectorAll(".dialog-close").forEach(button => button.setAttribute("aria-label", t("close")));
-  document.querySelector("#pin-dialog h2").textContent = t("parentCode");
-  document.querySelector("#pin-dialog p").textContent = t("pinCopy");
-  document.querySelector("#pin-form button").textContent = t("openParent");
+  if (!document.querySelector("#pin-dialog").open) { document.querySelector("#pin-title").textContent = state.language === "da" ? "Forældrekode" : "Parent PIN"; }
   document.querySelector(".profile-row .eyebrow").textContent = t("yourDay");
   document.querySelector("#dialog-category").textContent = t("chores");
   document.querySelector(".dialog-rule b").textContent = t("whenDone");
@@ -234,9 +246,10 @@ function handleClick(event) {
   const target = event.target.closest("button");
   const card = event.target.closest("[data-detail]");
   if (!target && !card) return;
-  if (target?.dataset.mode) { if (target.dataset.mode === "parent" && sessionStorage.getItem("mychores-parent-unlocked") !== "true") { pendingMode = target.dataset.mode; document.querySelector("#pin-dialog").showModal(); document.querySelector("#pin-input").focus(); return; } state.mode = target.dataset.mode; saveState(); render(); return; }
+  if (target?.dataset.mode) { if (target.dataset.mode === "parent" && sessionStorage.getItem("mychores-parent-unlocked") !== "true") { pendingMode = target.dataset.mode; openParentPinDialog(); return; } if (target.dataset.mode === "child") { sessionStorage.removeItem("mychores-parent-unlocked"); } state.mode = target.dataset.mode; saveState(); render(); return; }
   if (target?.dataset.approval) { handleApproval(target.dataset); return; }
   if (target?.hasAttribute("data-profile-reset")) { sessionStorage.removeItem("mychores-profile-selected"); state.mode = "child"; saveState(); render(); openProfileGate(); return; }
+  if (target?.hasAttribute("data-open-change-pin")) { document.querySelector("#change-pin-dialog").showModal(); return; }
   if (target?.hasAttribute("data-dialog-close")) { target.closest("dialog").close(); return; }
   if (target?.dataset.profile) { state.selectedChild = target.dataset.profile; saveState(); closeProfileGate(); render(); return; }
   if (target?.hasAttribute("data-start-setup")) { openChildForm(); return; }
@@ -265,7 +278,8 @@ document.querySelector("#goal-form").addEventListener("submit", saveGoal);
 document.querySelector("#child-form").addEventListener("submit", createChild);
 document.querySelector("#confirm-reward").addEventListener("click", confirmReward);
 document.querySelector("#confirm-remove-chore").addEventListener("click", confirmRemoveChore);
-document.querySelector("#pin-form").addEventListener("submit", event => { event.preventDefault(); const input = document.querySelector("#pin-input"); if (input.value !== PARENT_PIN) { input.value = ""; showToast(t("incorrectPin")); return; } sessionStorage.setItem("mychores-parent-unlocked", "true"); document.querySelector("#pin-dialog").close(); state.mode = pendingMode || "parent"; pendingMode = null; saveState(); render(); });
+document.querySelector("#pin-form").addEventListener("submit", event => { event.preventDefault(); const input = document.querySelector("#pin-input"); if (!/^\d{4}$/.test(input.value) || input.value !== state.parentPin) { input.value = ""; showToast(t("incorrectPin")); return; } sessionStorage.setItem("mychores-parent-unlocked", "true"); document.querySelector("#pin-dialog").close(); state.mode = pendingMode || "parent"; pendingMode = null; saveState(); render(); });
+document.querySelector("#change-pin-form").addEventListener("submit", event => { event.preventDefault(); const data = new FormData(event.currentTarget); const current = data.get("currentPin"); const next = data.get("newPin"); const confirm = data.get("confirmNewPin"); if (current !== state.parentPin || !/^\d{4}$/.test(next) || next !== confirm) { showToast(current !== state.parentPin ? t("incorrectPin") : (state.language === "da" ? "Koderne matcher ikke." : "PINs do not match.")); return; } state.parentPin = next; state.parentPinChanged = true; event.currentTarget.reset(); document.querySelector("#change-pin-dialog").close(); saveState(); showToast(state.language === "da" ? "Forældrekode ændret." : "Parent PIN changed."); });
 document.querySelector("#language-select").addEventListener("change", event => { state.language = event.target.value; saveState(); render(); });
 render();
 if (hasFamily() && sessionStorage.getItem("mychores-profile-selected") !== "true") openProfileGate();
