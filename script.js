@@ -40,6 +40,21 @@ async function testSupabaseConnection(email, password) {
   return { data, error, user };
 }
 window.testSupabaseConnection = testSupabaseConnection;
+
+// TEMPORARY dev-only manual upload — call window.uploadCurrentStateToSupabase() from the browser console.
+async function uploadCurrentStateToSupabase() {
+  if (!supabaseClient) { console.error("Supabase upload failed: Supabase is not configured."); return { data: null, error: new Error("Supabase is not configured.") }; }
+  const user = await supabaseGetUser();
+  if (!user) { console.error("Supabase upload failed: no authenticated user."); return { data: null, error: new Error("No authenticated user.") }; }
+  const { data: existing, error: fetchError } = await supabaseClient.from("families").select("id").eq("id", 1).eq("owner_id", user.id).maybeSingle();
+  if (fetchError) { console.error("Supabase upload failed while checking existing row:", fetchError); return { data: null, error: fetchError }; }
+  if (!existing) { console.error("Supabase upload failed: no matching family row found for id=1 and this user."); return { data: null, error: new Error("Family row not found.") }; }
+  const { data, error } = await supabaseClient.from("families").update({ data: state }).eq("id", 1).eq("owner_id", user.id).select();
+  if (error) { console.error("Supabase upload failed:", error); return { data: null, error }; }
+  console.log("Supabase upload succeeded. Family row id=1 data column updated.");
+  return { data, error: null };
+}
+window.uploadCurrentStateToSupabase = uploadCurrentStateToSupabase;
 // ===== End Supabase cloud sync configuration =====
 
 const translations = {
