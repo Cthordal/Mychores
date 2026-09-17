@@ -14,7 +14,7 @@
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="#top" aria-label="Mychores"><span class="brand-mark">✦</span><span id="brand-name">Mine pligter</span></a>
-      <nav class="app-nav" aria-label="Hovedmenu"><button class="nav-link active" data-scroll="top" type="button"><span>⌂</span><span data-i18n="home">Hjem</span></button><button class="nav-link" data-scroll="chores" type="button"><span>✓</span><span data-i18n="chores">Pligter</span></button><button class="nav-link" data-scroll="rewards" type="button"><span>✦</span><span data-i18n="rewards">Belønninger</span></button><button class="nav-link" data-scroll="goal" type="button"><span>◎</span><span data-i18n="goal">Opsparingsmål</span></button><button class="nav-link" data-scroll="profile" type="button"><span>○</span><span data-i18n="profile">Min profil</span></button></nav>
+      <nav class="app-nav" aria-label="Hovedmenu"><button class="nav-link active" data-scroll="top" type="button"><span>⌂</span><span data-i18n="home">Hjem</span></button><button class="nav-link" data-scroll="chores" type="button"><span>✓</span><span data-i18n="chores">Pligter</span></button><button class="nav-link" data-scroll="rewards" type="button"><span>✦</span><span data-i18n="rewards">Belønninger</span></button><button class="nav-link" data-scroll="goal-page" type="button"><span>◎</span><span data-i18n="goal">Opsparingsmål</span></button><button class="nav-link" data-scroll="profile" type="button"><span>○</span><span data-i18n="profile">Min profil</span></button></nav>
       <div class="language-control"><span>DA</span><select id="language-select" aria-label="Vælg sprog"><option value="da">Dansk</option><option value="en">English</option></select></div>
       <div class="mode-switch" role="group" aria-label="Choose app mode">
         <button class="mode-button active" data-mode="child" type="button" data-i18n="childMode">Barn</button>
@@ -24,41 +24,59 @@
 
     <main id="top">
       <section class="child-view" aria-label="Child dashboard">
-        <div class="profile-row" id="profile">
-          <div>
-            <p class="eyebrow">DIN DAG</p>
-            <h1><span class="header-avatar" id="header-avatar">✦</span> <span id="greeting-label">Hej</span>, <span id="greeting-name">Vega</span> <span aria-hidden="true">✦</span></h1>
-            <p class="tagline" id="tagline">Små pligter. Fede præmier.</p>
+        <div class="profile-row child-hero" id="profile">
+          <div class="child-hero-head">
+            <div class="child-hero-figure">
+              <div class="child-illustration" aria-hidden="true"><span class="header-avatar" id="header-avatar">✦</span><img class="child-character hidden" alt=""></div>
+              <p class="tagline" id="tagline">Små pligter. Fede præmier.</p>
+            </div>
+            <div class="child-hero-identity">
+              <p class="eyebrow">DIN DAG</p>
+              <h1><span id="greeting-label">Hej</span> <span id="greeting-name">Vega</span></h1>
+            </div>
+            <button class="profile-return" data-profile-reset type="button">⇄ Skift profil</button>
           </div>
           <div class="profile-picker" aria-label="Choose child profile">
             <button class="profile-button active" data-child="vega" type="button"><span class="avatar vega-avatar">V</span> Vega</button>
             <button class="profile-button" data-child="vidar" type="button"><span class="avatar vidar-avatar">V</span> Vidar</button>
           </div>
-          <button class="profile-return" data-profile-reset type="button">⇄ Skift profil</button>
-        </div>
 
-        <div class="dashboard-grid">
-          <button class="points-card panel bank-card" id="bank-card" type="button">
-            <div class="panel-label"><span class="sun-icon">✦</span> <span data-i18n="myBank">MIN BANK</span></div>
-            <div class="points-total"><span id="points-total">0</span><span class="points-unit">point</span></div>
-            <p class="muted" data-i18n="savedPoints">Dine opsparede point</p>
-            <div class="sparkline" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-          </button>
+          <div class="dashboard-grid child-progress">
+            <button class="points-card panel bank-card" id="bank-card" type="button">
+              <div class="panel-label"><span class="sun-icon">✦</span> <span data-i18n="myBank">MIN BANK</span></div>
+              <div class="points-total"><span id="points-total">0</span><span class="points-unit">point</span></div>
+              <p class="muted" data-i18n="savedPoints">Dine opsparede point</p>
+            </button>
 
-          <section class="goal-card panel" id="goal">
-            <div class="goal-heading"><div><div class="panel-label"><span class="target-icon">◎</span> <span data-i18n="myGoal">MIT MÅL</span></div><h2 data-i18n="savingGoal">Opsparingsmål</h2></div><button class="text-button" data-scroll="goal" type="button" data-i18n="changeGoal">Skift mål</button></div>
-            <div id="goal-content"></div>
-          </section>
+            <section class="goal-card panel" id="goal">
+              <div class="goal-heading"><div><div class="panel-label"><span class="target-icon">◎</span> <span data-i18n="myGoal">MIT MÅL</span></div><h2 data-i18n="savingGoal">Opsparingsmål</h2></div><button class="text-button" data-scroll="goal" type="button" data-i18n="changeGoal">Skift mål</button></div>
+              <div id="goal-content"></div>
+            </section>
+          </div>
         </div>
 
         <section class="content-section chores-section" id="chores">
-          <div class="section-heading"><div><p class="eyebrow" data-i18n="yourTasks">DINE OPGAVER</p><h2 data-i18n="myChores">Pligter</h2></div><span class="count-pill" id="chore-count">0 tilbage</span></div>
+          <div class="section-heading"><div><p class="eyebrow" data-i18n="yourTasks">DINE OPGAVER</p><h2 class="visually-hidden" data-i18n="myChores">Pligter</h2></div><span class="count-pill" id="chore-count">0 tilbage</span></div>
           <div class="chore-list" id="chore-list"></div>
         </section>
 
         <section class="content-section rewards-section" id="rewards">
-          <div class="section-heading"><div><p class="eyebrow" data-i18n="somethingToLookForward">NOGET AT GLÆDE SIG TIL</p><h2 data-i18n="rewards">Belønninger</h2></div></div>
+          <div class="section-heading"><div><p class="eyebrow" data-i18n="somethingToLookForward">NOGET AT GLÆDE SIG TIL</p><h2 data-i18n="rewards">Belønninger</h2><p class="rewards-tagline" id="rewards-tagline">Små pligter. Fede præmier.</p></div><span class="rewards-bank-chip"><span id="rewards-bank-total">0</span><span id="rewards-bank-unit" class="rewards-bank-unit">point</span></span></div>
           <div class="reward-grid" id="reward-grid"></div>
+        </section>
+
+        <section class="content-section goal-page-section" id="goal-page">
+          <div class="goal-page-header"><h2 data-i18n="savingGoal">Opsparingsmål</h2><p class="goal-page-tagline" id="goal-page-tagline">Små pligter. Fede præmier.</p></div>
+          <div class="goal-page-card">
+            <div class="goal-page-illustration" id="goal-page-illustration" aria-hidden="true"></div>
+            <span class="goal-page-label" data-i18n="myGoal">MIT MÅL</span>
+            <h3 class="goal-page-title" id="goal-page-title"></h3>
+            <p class="goal-page-score" id="goal-page-score"></p>
+            <div class="progress-track"><div class="progress-fill" id="goal-page-fill" style="width:0%"></div></div>
+            <p class="goal-page-percent" id="goal-page-percent"></p>
+            <p class="goal-page-remaining" id="goal-page-remaining"></p>
+            <div class="goal-page-bank-chip"><span id="goal-page-bank-total">0</span><span id="goal-page-bank-unit" class="goal-page-bank-unit">point</span></div>
+          </div>
         </section>
       </section>
 
@@ -70,7 +88,7 @@
         <section class="parent-section family-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="family">FAMILIE</p><h2 data-i18n="manageFamily">Familie</h2></div><button class="primary-button" data-add-child type="button" data-i18n="addChild">Tilføj et barn</button></div><div id="family-list" class="family-list"></div></section>
         <div class="management-grid">
           <section class="parent-section manage-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="catalogue">KATALOG</p><h2 data-i18n="manageCatalogue">Administrér pligter</h2></div></div><div id="catalogue-list" class="catalogue-list"></div><form id="chore-form" class="management-form compact-form"><input name="catalogueId" type="hidden"><label data-i18n="choreName">Pligt<input name="name" type="text" placeholder="fx Fodr katten" required></label><label data-i18n="points">Point<input name="points" type="number" min="1" step="1" placeholder="10" required></label><label data-i18n="category">Kategori<select name="category"><option>Køkken</option><option>Værelse</option><option>Tøj</option><option>Mad</option><option>Skole</option><option>Familie</option><option>Sport</option></select></label><label data-i18n="completion">Sådan er den klaret<input name="completion" type="text" placeholder="Beskriv det færdige resultat" required></label><button class="primary-button" type="submit" data-i18n="saveChore">Gem pligt</button></form></section>
-          <section class="parent-section manage-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="manageGoals">MÅL OG BELØNNINGER</p><h2 data-i18n="manageRewards">Administrér</h2></div></div><form id="reward-form" class="management-form"><label data-i18n="rewardName">Belønning<input name="name" type="text" placeholder="fx Vælg musik" required></label><label data-i18n="cost">Pointpris<input name="cost" type="number" min="1" step="1" placeholder="75" required></label><button class="primary-button" type="submit" data-i18n="addReward">Tilføj belønning</button></form><form id="goal-form" class="management-form goal-form"><label data-i18n="goalName">Mål<input name="name" type="text" required></label><label data-i18n="goalCost">Målpoint<input name="cost" type="number" min="1" required></label><label data-i18n="goalChild">Barn<select name="child" id="goal-child-select"></select></label><button class="primary-button" type="submit" data-i18n="saveGoal">Gem mål</button></form></section>
+          <section class="parent-section manage-panel"><div class="section-heading"><div><p class="eyebrow" data-i18n="manageGoals">MÅL OG BELØNNINGER</p><h2 data-i18n="manageRewards">Administrér</h2></div></div><div id="reward-manage-list" class="catalogue-list"></div><form id="reward-form" class="management-form"><label data-i18n="rewardName">Belønning<input name="name" type="text" placeholder="fx Vælg musik" required></label><label data-i18n="cost">Pointpris<input name="cost" type="number" min="1" step="1" placeholder="75" required></label><div class="reward-category-field"><span class="reward-category-field-label" data-i18n="chooseRewardCategory">Vælg kategori</span><div class="reward-category-picker" id="reward-category-picker"><button class="reward-category-choice" data-category="snacks" type="button"><img src="Assets/reward-slik-snacks.png" alt=""><span>Slik &amp; snacks</span></button><button class="reward-category-choice" data-category="screen" type="button"><img src="Assets/reward-skaerm-gaming.png" alt=""><span>Skærm &amp; gaming</span></button><button class="reward-category-choice" data-category="movie" type="button"><img src="Assets/reward-film-hygge.png" alt=""><span>Film &amp; hygge</span></button><button class="reward-category-choice" data-category="experience" type="button"><img src="Assets/reward-tur-oplevelse.png" alt=""><span>Tur &amp; oplevelse</span></button><button class="reward-category-choice" data-category="food" type="button"><img src="Assets/reward-mad-treat.png" alt=""><span>Mad &amp; treat</span></button><button class="reward-category-choice" data-category="sport" type="button"><img src="Assets/reward-sport-aktivitet.png" alt=""><span>Sport &amp; aktivitet</span></button><button class="reward-category-choice" data-category="things" type="button"><img src="Assets/reward-ting-oensker.png" alt=""><span>Ting &amp; ønsker</span></button><button class="reward-category-choice selected" data-category="other" type="button"><img src="Assets/reward-andet.png" alt=""><span>Andet</span></button></div><input type="hidden" name="category" value="other"></div><button class="primary-button" type="submit" data-i18n="addReward">Tilføj belønning</button></form><form id="goal-form" class="management-form goal-form"><label data-i18n="goalName">Mål<input name="name" type="text" required></label><label data-i18n="goalCost">Målpoint<input name="cost" type="number" min="1" required></label><label data-i18n="goalChild">Barn<select name="child" id="goal-child-select"></select></label><div class="goal-category-field"><span class="goal-category-field-label" data-i18n="chooseGoalCategory">Vælg kategori</span><div class="goal-category-picker" id="goal-category-picker"><button class="goal-category-choice" data-goal-category="transport" type="button"><img src="Assets/goal-transport-udstyr.png" alt=""><span>Transport &amp; udstyr</span></button><button class="goal-category-choice" data-goal-category="gaming" type="button"><img src="Assets/goal-gaming-elektronik.png" alt=""><span>Gaming &amp; elektronik</span></button><button class="goal-category-choice" data-goal-category="hobby" type="button"><img src="Assets/goal-legetoej-hobby.png" alt=""><span>Legetøj &amp; hobby</span></button><button class="goal-category-choice" data-goal-category="style" type="button"><img src="Assets/goal-toej-stil.png" alt=""><span>Tøj &amp; stil</span></button><button class="goal-category-choice" data-goal-category="sport" type="button"><img src="Assets/goal-sport-fritid.png" alt=""><span>Sport &amp; fritid</span></button><button class="goal-category-choice" data-goal-category="experience" type="button"><img src="Assets/goal-oplevelser-ture.png" alt=""><span>Oplevelser &amp; ture</span></button><button class="goal-category-choice" data-goal-category="money" type="button"><img src="Assets/goal-spare-op-penge.png" alt=""><span>Spare op / penge</span></button><button class="goal-category-choice selected" data-goal-category="other" type="button"><img src="Assets/goal-andet.png" alt=""><span>Andet</span></button></div><input type="hidden" name="category" value="other"></div><button class="primary-button" type="submit" data-i18n="saveGoal">Gem mål</button></form></section>
         </div>
       </section>
     </main>
@@ -89,6 +107,8 @@
   <dialog class="remove-chore-dialog" id="remove-chore-dialog"><button class="dialog-close" data-dialog-close type="button" aria-label="Luk">×</button><span class="section-label" data-i18n="removeChore">FJERN PLIGT</span><h2 data-i18n="removeChoreTitle">Fjern pligten?</h2><p id="remove-chore-copy"></p><div class="reward-dialog-actions"><button class="ghost-button" data-dialog-close type="button" data-i18n="cancel">Annuller</button><button class="primary-button" id="confirm-remove-chore" type="button" data-i18n="remove">Fjern</button></div></dialog>
   <nav class="mobile-nav" aria-label="Mobilmenu"><button class="nav-link active" data-scroll="top" type="button"><span>⌂</span><span data-i18n="home">Hjem</span></button><button class="nav-link" data-scroll="chores" type="button"><span>✓</span><span data-i18n="chores">Pligter</span></button><button class="nav-link" data-scroll="rewards" type="button"><span>✦</span><span data-i18n="rewards">Belønninger</span></button><button class="nav-link" data-scroll="profile" type="button"><span>○</span><span data-i18n="profile">Profil</span></button></nav>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <!-- Supabase JS client (CDN, UMD build) — needed for cloud sync foundation -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

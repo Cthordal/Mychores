@@ -1,5 +1,47 @@
 const STORAGE_KEY = "mychores-prototype-v1";
 
+// ===== Supabase cloud sync configuration (foundation only, not yet used) =====
+// TODO: paste your real Supabase project values below.
+const SUPABASE_URL = "https://ngzuykbvqzlbdgfgzkmu.supabase.co"; // e.g. "https://xxxxxxxx.supabase.co"
+const SUPABASE_ANON_KEY = "sb_publishable_cl35ZOkZkEX8kJXBPBcCbQ_XJBm7BaT"; // Supabase project "anon" public API key
+
+// Supabase client is only created if the placeholders above have been filled in,
+// so the app keeps working normally (via localStorage) when Supabase isn't configured.
+let supabaseClient = null;
+if (typeof window !== "undefined" && window.supabase && SUPABASE_URL !== "YOUR_SUPABASE_URL" && SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY") {
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+// Signs in an existing family user with email + password. Returns { data, error }.
+async function supabaseSignIn(email, password) {
+  if (!supabaseClient) return { data: null, error: new Error("Supabase is not configured.") };
+  return supabaseClient.auth.signInWithPassword({ email, password });
+}
+
+// Returns the current authenticated Supabase user, or null if signed out / not configured.
+async function supabaseGetUser() {
+  if (!supabaseClient) return null;
+  const { data } = await supabaseClient.auth.getUser();
+  return data?.user || null;
+}
+
+// Signs out the current Supabase user, if any.
+async function supabaseSignOut() {
+  if (!supabaseClient) return { error: new Error("Supabase is not configured.") };
+  return supabaseClient.auth.signOut();
+}
+
+// TEMPORARY dev-only connection test — call window.testSupabaseConnection(email, password) from the browser console.
+async function testSupabaseConnection(email, password) {
+  const { data, error } = await supabaseSignIn(email, password);
+  if (error) { console.error("Supabase connection test failed:", error); return { data, error }; }
+  const user = await supabaseGetUser();
+  console.log("Supabase connection test succeeded. User email:", user?.email, "User id:", user?.id);
+  return { data, error, user };
+}
+window.testSupabaseConnection = testSupabaseConnection;
+// ===== End Supabase cloud sync configuration =====
+
 const translations = {
   da: {
     brand: "Mine pligter", tagline: "Små pligter. Fede præmier.", home: "Hjem", chores: "Pligter", rewards: "Præmier", goal: "Opsparingsmål", profile: "Min profil", childMode: "Barn", parentMode: "Forældre", myBank: "MIN BANK", savedPoints: "Dine opsparede point", myGoal: "MIT MÅL", savingGoal: "Opsparingsmål", changeGoal: "Skift mål", yourTasks: "DINE OPGAVER", myChores: "Pligter", somethingToLookForward: "NOGET AT GLÆDE SIG TIL", familyControl: "FAMILIENS KONTROLCENTER", parentIntro: "Godkend og aktivér pligter hurtigt.", activateNeed: "AKTIVÉR ET BEHOV", activationHelp: "Vælg en pligt fra kataloget, når den skal ordnes.", checkWork: "TJEK ARBEJDET", waitingApproval: "Venter på godkendelse", activeNow: "AKTIVE PLIGTER", activeChores: "Aktive pligter", catalogue: "KATALOG", manageCatalogue: "Administrér pligter", manageGoals: "MÅL OG PRÆMIER", manageRewards: "Administrér præmier", choreName: "Pligt", points: "Point", category: "Kategori", completion: "Sådan er den klaret", saveChore: "Gem pligt", rewardName: "Præmie", cost: "Pointpris", addReward: "Tilføj præmie", goalName: "Mål", goalCost: "Målpoint", goalChild: "Barn", saveGoal: "Gem mål", history: "Historik", confirmReward: "PRÆMIE", cancel: "Annuller", confirm: "Bekræft", approve: "Godkend", reject: "Afvis", waiting: "Venter på godkendelse", activate: "Aktivér", active: "Aktiv", edit: "Redigér", delete: "Slet", noWaiting: "Der venter ikke noget lige nu.", noActive: "Ingen aktive pligter.", noTransactions: "Ingen transaktioner endnu.", balance: "Saldo", points: "point", mustBeDone: "Skal være klaret denne uge.", beforeSunday: "Senest søndag.", chooseWhen: "Du bestemmer selv hvornår.", mustDo: "Det her skal ordnes.", ongoing: "Dit faste ansvar derhjemme.", detail: "Se hvad der tæller som klaret", done: "KLARET!", sent: "Sendt til godkendelse", incorrectPin: "Forkert kode.", newChore: "Ny pligt tilføjet.", newReward: "Ny præmie tilføjet.", goalSaved: "Mål gemt.", activated: "Pligt aktiveret.", alreadyActive: "Denne pligt er allerede aktiv.", insufficient: "Du har ikke point nok.", rewardBought: "Præmie købt.", noNeed: "Når opvasken skal bruges igen", beforeEating: "Før vi spiser", beforeBed: "Før du går i seng", cleanResult: "Alle ting skal på plads.", weeklyProgress: "{done} af {total} klaret denne uge", bankEarned: "+{amount} ⭐ GODKENDT!", bankChange: "{before} → {after} point", removeChore: "Fjern pligt", removeChoreTitle: "Fjern pligten?", removeChoreCopy: "Den fjernes fra {name}s pligter og giver ingen point.", remove: "Fjern"
@@ -44,6 +86,12 @@ translations.da.currentPin = "Nuværende PIN"; translations.en.currentPin = "Cur
 translations.da.newPin = "Ny PIN"; translations.en.newPin = "New PIN";
 translations.da.confirmNewPin = "Bekræft ny PIN"; translations.en.confirmNewPin = "Confirm new PIN";
 translations.da.savePin = "Gem kode"; translations.en.savePin = "Save PIN";
+translations.da.removeReward = "FJERN PRÆMIE"; translations.en.removeReward = "REMOVE REWARD";
+translations.da.removeRewardConfirm = "Vil du fjerne denne præmie?"; translations.en.removeRewardConfirm = "Remove this reward?";
+translations.da.rewardRemoved = "Præmie fjernet."; translations.en.rewardRemoved = "Reward removed.";
+translations.da.selectReward = "VÆLG PRÆMIE"; translations.en.selectReward = "SELECT REWARD";
+translations.da.chooseRewardCategory = "Vælg kategori"; translations.en.chooseRewardCategory = "Choose category";
+translations.da.chooseGoalCategory = "Vælg kategori"; translations.en.chooseGoalCategory = "Choose category";
 
 const categoryIcons = { Køkken: "🍽️", Værelse: "🧸", Tøj: "👕", Mad: "🍳", Skole: "🎒", Familie: "🤝", Sport: "⚽", Kitchen: "🍽️", Room: "🧸", Clothes: "👕", Food: "🍳", School: "🎒", Family: "🤝", Sports: "⚽" };
 const categoryLabels = { Køkken: { da: "Køkken", en: "Kitchen" }, Værelse: { da: "Værelse", en: "Room" }, Tøj: { da: "Tøj", en: "Clothes" }, Mad: { da: "Mad", en: "Food" }, Skole: { da: "Skole", en: "School" }, Familie: { da: "Familie", en: "Family" }, Sport: { da: "Sport", en: "Sports" } };
@@ -60,14 +108,24 @@ const defaultCatalogue = [
   { id: "room", name: { da: "Ryd op på dit værelse", en: "Tidy your room" }, points: 20, category: { da: "Værelse", en: "Room" }, completion: { da: "Gulvet er frit, tøjet er på plads, og skrivebordet er ryddet.", en: "The floor is clear, clothes are away and the desk is tidy." }, icon: "🧸" }
 ];
 const defaultRewards = [
-  { id: "candy", name: { da: "Vælg fredagsslik", en: "Choose Friday candy" }, cost: 50, icon: "🍬" },
-  { id: "screen", name: { da: "30 min. ekstra skærmtid", en: "30 minutes extra screen time" }, cost: 100, icon: "🎮" },
-  { id: "dinner", name: { da: "Vælg aftensmad", en: "Choose dinner" }, cost: 150, icon: "🍕" },
-  { id: "movie", name: { da: "Filmaften", en: "Movie night" }, cost: 250, icon: "🍿" },
-  { id: "cinema", name: { da: "Biograftur", en: "Cinema trip" }, cost: 500, icon: "🎬" }
+  { id: "candy", name: { da: "Vælg fredagsslik", en: "Choose Friday candy" }, cost: 50, icon: "🍬", category: "snacks" },
+  { id: "screen", name: { da: "30 min. ekstra skærmtid", en: "30 minutes extra screen time" }, cost: 100, icon: "🎮", category: "screen" },
+  { id: "dinner", name: { da: "Vælg aftensmad", en: "Choose dinner" }, cost: 150, icon: "🍕", category: "food" },
+  { id: "movie", name: { da: "Filmaften", en: "Movie night" }, cost: 250, icon: "🍿", category: "movie" },
+  { id: "cinema", name: { da: "Biograftur", en: "Cinema trip" }, cost: 500, icon: "🎬", category: "experience" }
 ];
 
 const avatarChoices = ["⚽", "🏀", "🎮", "🚀", "🦊", "🐼", "🐯", "🦁", "🦄", "⭐", "⚡", "🔥", "🌈", "🎧", "🛹", "🍀"];
+const characterAssets = { Vega: "Assets/Vega app.png", Vidar: "Assets/Vidar app.png" };
+const choreIllustrations = { "dishwasher-empty": "Assets/opvasker billede.png", "dishwasher-fill": "Assets/Fyld opvasker.png", trash: "Assets/tag-skraldet-ud.png", laundry: "Assets/laeg-toej-sammen.png", table: "Assets/daek-bord.png", "clear-table": "Assets/ryd-af-efter-aftensmad.png", "school-bag": "Assets/pak-skole-sportstaske.png", sheets: "Assets/skift-sengetoej.png", cook: "Assets/lav-mad-med-voksen.png", room: "Assets/ryd-op-vaerelset.png" };
+// Vega-specific chore illustrations; only used when the chore's assigned child is Vega.
+const vegaChoreIllustrations = { "dishwasher-empty": "Assets/vega-opvasker-billede.png", "dishwasher-fill": "Assets/vega-fyld-opvasker.png", trash: "Assets/vega-tag-skraldet-ud.png", laundry: "Assets/vega-laeg-toej-sammen.png", "clear-table": "Assets/vega-ryd-af-efter-aftensmad.png", "school-bag": "Assets/vega-pak-skole-sportstaske.png", sheets: "Assets/vega-skift-sengetoej.png", cook: "Assets/vega-lav-mad-med-voksen.png", room: "Assets/vega-ryd-op-vaerelset.png" };
+const rewardCategoryOrder = ["snacks", "screen", "movie", "experience", "food", "sport", "things", "other"];
+const rewardCategoryLabels = { snacks: { da: "Slik & snacks", en: "Candy & snacks" }, screen: { da: "Skærm & gaming", en: "Screen & gaming" }, movie: { da: "Film & hygge", en: "Movie & cosy time" }, experience: { da: "Tur & oplevelse", en: "Outing & experience" }, food: { da: "Mad & treat", en: "Food & treat" }, sport: { da: "Sport & aktivitet", en: "Sport & activity" }, things: { da: "Ting & ønsker", en: "Things & wishes" }, other: { da: "Andet", en: "Other" } };
+const rewardCategoryAssets = { snacks: "Assets/reward-slik-snacks.png", screen: "Assets/reward-skaerm-gaming.png", movie: "Assets/reward-film-hygge.png", experience: "Assets/reward-tur-oplevelse.png", food: "Assets/reward-mad-treat.png", sport: "Assets/reward-sport-aktivitet.png", things: "Assets/reward-ting-oensker.png", other: "Assets/reward-andet.png" };
+const goalCategoryOrder = ["transport", "gaming", "hobby", "style", "sport", "experience", "money", "other"];
+const goalCategoryLabels = { transport: { da: "Transport & udstyr", en: "Transport & gear" }, gaming: { da: "Gaming & elektronik", en: "Gaming & electronics" }, hobby: { da: "Legetøj & hobby", en: "Toys & hobbies" }, style: { da: "Tøj & stil", en: "Clothes & style" }, sport: { da: "Sport & fritid", en: "Sport & leisure" }, experience: { da: "Oplevelser & ture", en: "Experiences & trips" }, money: { da: "Spare op / penge", en: "Saving up / money" }, other: { da: "Andet", en: "Other" } };
+const goalCategoryAssets = { transport: "Assets/goal-transport-udstyr.png", gaming: "Assets/goal-gaming-elektronik.png", hobby: "Assets/goal-legetoej-hobby.png", style: "Assets/goal-toej-stil.png", sport: "Assets/goal-sport-fritid.png", experience: "Assets/goal-oplevelser-ture.png", money: "Assets/goal-spare-op-penge.png", other: "Assets/goal-andet.png" };
 const defaultState = { language: "da", selectedChild: null, mode: "child", parentPin: "1234", parentPinChanged: false, catalogue: defaultCatalogue, rewards: defaultRewards, children: [] };
 
 let state;
@@ -100,12 +158,14 @@ function loadState() {
     const legacyChildren = Array.isArray(old.children) ? old.children : Object.entries(old.children || {}).map(([id, child]) => ({ ...child, id, avatar: child.avatar || (id === "vega" ? "⭐" : "⚡") }));
     const pinState = normalizeParentPin(old);
     const next = { ...clone(defaultState), ...old, ...pinState, children: legacyChildren, language: old.language || localStorage.getItem("mychores-language") || "da", catalogue: old.catalogue?.length ? old.catalogue : clone(defaultCatalogue), rewards: old.rewards?.length ? old.rewards : clone(defaultRewards) };
+    next.rewards.forEach(reward => { if (rewardCategoryLabels[reward.category]) return; const fallback = defaultRewards.find(item => item.id === reward.id) || defaultRewards.find(item => localized(item.name, "da").toLowerCase() === String(reward.name?.da || reward.name?.en || reward.name || "").toLowerCase()); reward.category = fallback?.category || "other"; });
     next.selectedChild = next.children.some(child => child.id === old.selectedChild) ? old.selectedChild : next.children[0]?.id || null;
     next.children.forEach((child, index) => {
       child.id = child.id || `child-${Date.now()}-${index}`;
       child.avatar = child.avatar || avatarChoices[index % avatarChoices.length];
       child.bank = Number.isFinite(child.bank) ? child.bank : Number(child.points) || 0;
       child.goal = child.goal || { name: { da: "Mit mål", en: "My goal" }, cost: 1000, icon: "🎯" };
+      child.goal.category = goalCategoryLabels[child.goal.category] ? child.goal.category : "other";
       child.transactions = Array.isArray(child.transactions) ? child.transactions : [];
       child.chores = (child.chores || []).map(chore => migrateChore(chore, child.id));
     });
@@ -133,6 +193,8 @@ function applyTranslations() {
   document.title = `${t("brand")} | ${t("tagline")}`;
   document.querySelector("#brand-name").textContent = t("brand");
   document.querySelector("#tagline").textContent = t("tagline");
+  document.querySelector("#rewards-tagline").textContent = t("tagline");
+  document.querySelector("#goal-page-tagline").textContent = t("tagline");
   document.querySelector("#greeting-label").textContent = t("greeting");
   document.querySelectorAll("[data-i18n]").forEach(element => { const control = element.querySelector("input, select, textarea"); if (control) { const textNode = Array.from(element.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim()); if (textNode) textNode.textContent = `${t(element.dataset.i18n)}`; } else element.textContent = t(element.dataset.i18n); });
   document.querySelector("#profile-gate-title").textContent = t("whoAreYou");
@@ -150,6 +212,8 @@ function applyTranslations() {
   document.querySelectorAll("#chore-form select[name='category'] option").forEach(option => { option.textContent = localized(categoryOptions[option.value] || option.value); });
   const periodLabels = { today: { da: "Skal ordnes", en: "Needs doing" }, weekly: { da: "Denne uge", en: "This week" }, responsibility: { da: "Mit ansvar", en: "My responsibility" } };
   document.querySelectorAll("#chore-form select[name='period'] option").forEach(option => { option.textContent = localized(periodLabels[option.value]); });
+  document.querySelectorAll("#reward-category-picker .reward-category-choice").forEach(choice => { const label = choice.querySelector("span"); if (label) label.textContent = localized(rewardCategoryLabels[choice.dataset.category]); });
+  document.querySelectorAll("#goal-category-picker .goal-category-choice").forEach(choice => { const label = choice.querySelector("span"); if (label) label.textContent = localized(goalCategoryLabels[choice.dataset.goalCategory]); });
 }
 
 function render() {
@@ -171,7 +235,9 @@ const groups = [
 
 function renderChoreCard(chore) {
   const pending = chore.status === "pending";
-  return `<article class="chore-item ${pending ? "pending-item" : ""}" data-detail="${chore.id}"><span class="chore-icon">${chore.icon || iconFor(chore.category)}</span><div class="chore-copy"><span class="chore-category">${escapeHtml(categoryText(chore.category))}</span><p class="chore-name">${escapeHtml(choreName(chore))}</p><span class="chore-points">+${chore.points} ${t("points")}</span><p class="chore-deadline">${escapeHtml(deadlineText(chore))}</p><button class="detail-link" data-detail="${chore.id}" type="button">${t("detail")}</button></div>${pending ? `<span class="pending-label">${t("waiting")}</span>` : `<button class="done-button" data-chore="${chore.id}" type="button">${t("done")}</button>`}</article>`;
+  const assignedChild = state.children.find(child => child.id === (chore.assignedChildId || currentChild()?.id));
+  const illustration = (assignedChild?.name === "Vega" && vegaChoreIllustrations[chore.catalogueId]) || choreIllustrations[chore.catalogueId];
+  return `<article class="chore-item ${pending ? "pending-item" : ""}" data-detail="${chore.id}"><p class="chore-name">${escapeHtml(choreName(chore))}</p><div class="chore-illustration" aria-hidden="true">${illustration ? `<img src="${illustration}" alt="">` : ""}</div><span class="chore-points"><strong>+${chore.points}</strong><small>${t("points")}</small></span><div class="chore-meta"><span class="chore-category">${escapeHtml(categoryText(chore.category))}</span><p class="chore-deadline">${escapeHtml(deadlineText(chore))}</p><button class="detail-link" data-detail="${chore.id}" type="button">${t("detail")}</button></div>${pending ? `<span class="pending-label">${t("waiting")}</span>` : `<button class="done-button" data-chore="${chore.id}" type="button">${t("done")}</button>`}</article>`;
 }
 
 function renderChoreGroups(child) {
@@ -179,7 +245,7 @@ function renderChoreGroups(child) {
     const chores = child.chores.filter(chore => (chore.assignedChildId || child.id) === child.id && chore.status !== "approved" && (chore.period || "today") === group.key);
     const weekly = group.key === "weekly" ? child.chores.filter(chore => chore.period === "weekly") : [];
     const done = weekly.filter(chore => chore.status === "approved").length;
-    return `<section class="chore-group"><div class="chore-group-heading"><div><span class="section-label">${localized(group.label)}</span><h3>${localized(group.title)}</h3><p>${localized(group.hint)}</p></div>${group.key === "weekly" ? `<span class="group-progress">${t("weeklyProgress", { done, total: weekly.length })}</span>` : ""}</div><div class="chore-list">${chores.length ? chores.map(renderChoreCard).join("") : `<div class="empty-state">${t("noActive")}</div>`}</div></section>`;
+    return `<section class="chore-group"><div class="chore-group-heading"><div><span class="section-label">${localized(group.label)}</span><h3>${localized(group.title)}</h3><p>${localized(group.hint)}</p></div>${group.key === "weekly" ? `<span class="group-progress">${t("weeklyProgress", { done, total: weekly.length })}</span>` : ""}</div><div class="chore-list">${chores.length ? chores.map(renderChoreCard).join("") : `<div class="chore-empty-state">${t("noActive")}</div>`}</div></section>`;
   }).join("");
 }
 
@@ -188,15 +254,31 @@ function renderChildView() {
   const active = child.chores.filter(chore => chore.status !== "approved");
   document.querySelector("#greeting-name").textContent = child.name;
   document.querySelector("#header-avatar").textContent = child.avatar;
+  const characterImage = document.querySelector(".child-character");
+  const characterAsset = characterAssets[child.name];
+  characterImage.classList.toggle("hidden", !characterAsset);
+  if (characterAsset) characterImage.src = characterAsset;
   document.querySelector("#points-total").textContent = child.bank.toLocaleString(state.language === "da" ? "da-DK" : "en-US");
   document.querySelector(".points-unit").textContent = t("points");
   document.querySelector("#chore-count").textContent = `${active.filter(chore => chore.status === "active").length} ${state.language === "da" ? "tilbage" : "left"}`;
   const goal = child.goal;
   const goalName = localized(goal.name);
   const percent = Math.min(100, Math.round(child.bank / goal.cost * 100));
-  document.querySelector("#goal-content").innerHTML = `<div class="goal-main"><div class="goal-emoji">${goal.icon}</div><div><p class="goal-title">${escapeHtml(goalName)}</p><p class="goal-score">${child.bank.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} / ${goal.cost.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} ${t("points")}</p><p class="goal-percent">${percent}%</p><p class="goal-remaining">${Math.max(0, goal.cost - child.bank).toLocaleString()} ${t("points")} ${state.language === "da" ? "tilbage" : "left"}</p></div></div><div class="progress-track"><div class="progress-fill" style="width:${percent}%"></div></div>`;
+  const goalAsset = goalCategoryAssets[goal.category] || goalCategoryAssets.other;
+  const goalRemaining = Math.max(0, goal.cost - child.bank);
+  document.querySelector("#goal-content").innerHTML = `<div class="goal-illustration" aria-hidden="true"><img src="${goalAsset}" alt=""></div><p class="goal-title">${escapeHtml(goalName)}</p><p class="goal-score">${child.bank.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} / ${goal.cost.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} ${t("points")}</p><div class="progress-track"><div class="progress-fill" style="width:${percent}%"></div></div><p class="goal-percent">${percent}%</p><p class="goal-remaining">${goalRemaining.toLocaleString()} ${t("points")} ${state.language === "da" ? "tilbage" : "left"}</p>`;
+  document.querySelector("#goal-page-illustration").innerHTML = `<img src="${goalAsset}" alt="">`;
+  document.querySelector("#goal-page-title").textContent = goalName;
+  document.querySelector("#goal-page-score").textContent = `${child.bank.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} / ${goal.cost.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} ${t("points")}`;
+  document.querySelector("#goal-page-fill").style.width = `${percent}%`;
+  document.querySelector("#goal-page-percent").textContent = `${percent}%`;
+  document.querySelector("#goal-page-remaining").textContent = `${goalRemaining.toLocaleString()} ${t("points")} ${state.language === "da" ? "tilbage" : "left"}`;
+  document.querySelector("#goal-page-bank-total").textContent = child.bank.toLocaleString(state.language === "da" ? "da-DK" : "en-US");
+  document.querySelector("#goal-page-bank-unit").textContent = t("points");
   document.querySelector("#chore-list").innerHTML = renderChoreGroups(child);
-  document.querySelector("#reward-grid").innerHTML = state.rewards.map(reward => { const name = localized(reward.name); const canAfford = child.bank >= reward.cost; return `<article class="reward-card"><span class="reward-emoji">${reward.icon || "🎁"}</span><span class="reward-name">${escapeHtml(name)}</span><span class="reward-cost">${reward.cost} ${t("points")}</span><button class="reward-action ${canAfford ? "can-afford" : ""}" data-reward="${reward.id}" type="button">${canAfford ? (state.language === "da" ? "Køb" : "Buy") : t("insufficient")}</button></article>`; }).join("");
+  document.querySelector("#rewards-bank-total").textContent = child.bank.toLocaleString(state.language === "da" ? "da-DK" : "en-US");
+  document.querySelector("#rewards-bank-unit").textContent = t("points");
+  document.querySelector("#reward-grid").innerHTML = state.rewards.map(reward => { const name = localized(reward.name); const canAfford = child.bank >= reward.cost; const remaining = Math.max(0, reward.cost - child.bank); const asset = rewardCategoryAssets[reward.category] || rewardCategoryAssets.other; return `<article class="reward-card"><span class="reward-name">${escapeHtml(name)}</span><div class="reward-illustration" aria-hidden="true"><img src="${asset}" alt=""></div><span class="reward-cost">${reward.cost} ${t("points")}</span><button class="reward-action ${canAfford ? "can-afford" : "needs-more"}" data-reward="${reward.id}" type="button">${canAfford ? t("selectReward") : `${remaining} ${t("points")} ${state.language === "da" ? "tilbage" : "to go"}`}</button></article>`; }).join("");
 }
 
 function renderParentView() {
@@ -208,7 +290,9 @@ function renderParentView() {
   const active = currentChild().chores.filter(chore => chore.status === "active");
   document.querySelector("#active-parent-list").innerHTML = active.length ? active.map(chore => `<div class="active-parent-item"><span>${chore.icon || "✦"}</span><div><b>${escapeHtml(choreName(chore))}</b><small>${currentChild().name} · +${chore.points} ${t("points")}</small></div><button class="remove-chore-button" data-remove-chore="${chore.id}" type="button">${t("removeChore")}</button></div>`).join("") : `<div class="empty-state">${t("noActive")}</div>`;
   renderCatalogue();
+  renderRewardManage();
   document.querySelector("#goal-child-select").innerHTML = state.children.map(child => `<option value="${child.id}">${escapeHtml(child.name)}</option>`).join("");
+  syncGoalCategoryPicker();
   document.querySelector("#family-list").innerHTML = state.children.map(child => `<div class="family-row"><span class="family-avatar">${child.avatar}</span><div><b>${escapeHtml(child.name)}</b><small>${child.bank} ${t("points")}</small></div><button class="catalogue-edit" data-edit-child="${child.id}" type="button">${t("editChild")}</button><button class="catalogue-delete" data-remove-child="${child.id}" type="button">×</button></div>`).join("");
 }
 
@@ -229,6 +313,12 @@ function renderCatalogue() {
   list.innerHTML = catalogue.map(item => `<div class="catalogue-row"><span class="catalogue-icon">${item.icon || "✦"}</span><div><b>${escapeHtml(localized(item.name))}</b><small>${item.points} ${t("points")} · ${escapeHtml(localized(item.category))}</small></div><button class="catalogue-edit" data-edit-catalogue="${item.id}" type="button">${t("edit")}</button><button class="catalogue-delete" data-delete-catalogue="${item.id}" type="button">×</button></div>`).join("");
 }
 
+function renderRewardManage() {
+  const list = document.querySelector("#reward-manage-list");
+  if (!list) return;
+  list.innerHTML = state.rewards.map(reward => `<div class="catalogue-row"><span class="catalogue-icon">${reward.icon || "🎁"}</span><div><b>${escapeHtml(localized(reward.name))}</b><small>${reward.cost} ${t("points")}</small></div><button class="remove-chore-button" data-remove-reward="${reward.id}" type="button">${t("removeReward")}</button></div>`).join("");
+}
+
 function addTransaction(child, amount, type, description) { child.transactions.unshift(makeTransaction(amount, type, description)); }
 function completeChore(choreId) { const chore = currentChild().chores.find(item => item.id === choreId); if (!chore || chore.status !== "active") return; chore.status = "pending"; chore.completedAt = new Date().toISOString(); saveState(); render(); showCelebration(); }
 function handleApproval(data) { const child = state.children.find(item => item.id === data.child); const chore = child?.chores.find(item => item.id === data.chore); if (!child || !chore) return; if (data.approval === "approve") { const before = child.bank; chore.status = "approved"; child.bank += chore.points; const catalogueItem = state.catalogue.find(item => item.id === chore.catalogueId); addTransaction(child, chore.points, "earned", catalogueItem?.name || { da: chore.name, en: chore.name }); sessionStorage.setItem("mychores-approval-feedback", JSON.stringify({ childId: data.child, earned: chore.points, before, after: child.bank })); showToast(`${child.name} +${chore.points} ${t("points")}`); } else { chore.status = "active"; showToast(t("reject")); } saveState(); render(); }
@@ -239,8 +329,11 @@ function confirmReward() { const child = currentChild(); if (!pendingReward || c
 function saveCatalogueChore(event) { event.preventDefault(); const data = new FormData(event.currentTarget); const id = data.get("catalogueId") || `catalogue-${Date.now()}`; const item = { id, name: { da: data.get("name"), en: data.get("name") }, points: Number(data.get("points")), category: { da: data.get("category"), en: data.get("category") }, completion: { da: data.get("completion"), en: data.get("completion") }, icon: iconFor(data.get("category")) }; const index = state.catalogue.findIndex(chore => chore.id === id); if (index >= 0) state.catalogue[index] = item; else state.catalogue.push(item); event.currentTarget.reset(); event.currentTarget.catalogueId.value = ""; saveState(); render(); showToast(t("newChore")); }
 function editCatalogue(id) { const item = state.catalogue.find(chore => chore.id === id); if (!item) return; const form = document.querySelector("#chore-form"); form.catalogueId.value = item.id; form.name.value = localized(item.name); form.points.value = item.points; form.category.value = localized(item.category); form.completion.value = localized(item.completion); form.scrollIntoView({ behavior: "smooth", block: "center" }); }
 function deleteCatalogue(id) { state.catalogue = state.catalogue.filter(item => item.id !== id); saveState(); render(); }
-function addReward(event) { event.preventDefault(); const data = new FormData(event.currentTarget); state.rewards.push({ id: `reward-${Date.now()}`, name: { da: data.get("name"), en: data.get("name") }, cost: Number(data.get("cost")), icon: "🎁" }); event.currentTarget.reset(); saveState(); render(); showToast(t("newReward")); }
-function saveGoal(event) { event.preventDefault(); const data = new FormData(event.currentTarget); const child = state.children.find(item => item.id === data.get("child")); if (!child) return; child.goal = { name: { da: data.get("name"), en: data.get("name") }, cost: Number(data.get("cost")), icon: child.goal?.icon || "🎯" }; saveState(); render(); showToast(t("goalSaved")); }
+function addReward(event) { event.preventDefault(); const data = new FormData(event.currentTarget); const category = rewardCategoryLabels[data.get("category")] ? data.get("category") : "other"; state.rewards.push({ id: `reward-${Date.now()}`, name: { da: data.get("name"), en: data.get("name") }, cost: Number(data.get("cost")), icon: "🎁", category }); event.currentTarget.reset(); resetRewardCategoryPicker(event.currentTarget); saveState(); render(); showToast(t("newReward")); }
+function resetRewardCategoryPicker(form) { const picker = form.querySelector(".reward-category-picker"); if (!picker) return; picker.querySelectorAll(".reward-category-choice").forEach(choice => choice.classList.toggle("selected", choice.dataset.category === "other")); const hidden = form.querySelector('input[name="category"]'); if (hidden) hidden.value = "other"; }
+function removeReward(id) { if (!window.confirm(t("removeRewardConfirm"))) return; state.rewards = state.rewards.filter(reward => reward.id !== id); saveState(); render(); showToast(t("rewardRemoved")); }
+function saveGoal(event) { event.preventDefault(); const data = new FormData(event.currentTarget); const child = state.children.find(item => item.id === data.get("child")); if (!child) return; const category = goalCategoryLabels[data.get("category")] ? data.get("category") : "other"; child.goal = { name: { da: data.get("name"), en: data.get("name") }, cost: Number(data.get("cost")), icon: child.goal?.icon || "🎯", category }; saveState(); render(); showToast(t("goalSaved")); }
+function syncGoalCategoryPicker() { const picker = document.querySelector("#goal-category-picker"); if (!picker) return; const select = document.querySelector("#goal-child-select"); const child = state.children.find(item => item.id === select.value) || state.children[0]; const category = child?.goal?.category || "other"; picker.querySelectorAll(".goal-category-choice").forEach(choice => choice.classList.toggle("selected", choice.dataset.goalCategory === category)); const hidden = document.querySelector('#goal-form input[name="category"]'); if (hidden) hidden.value = category; }
 
 function handleClick(event) {
   const target = event.target.closest("button");
@@ -256,6 +349,8 @@ function handleClick(event) {
   if (target?.hasAttribute("data-ready")) { closeSetup(); sessionStorage.setItem("mychores-profile-selected", "true"); render(); return; }
   if (target?.hasAttribute("data-add-child")) { openChildForm(); return; }
   if (target?.dataset.avatar) { document.querySelectorAll(".avatar-choice").forEach(button => button.classList.toggle("selected", button.dataset.avatar === target.dataset.avatar)); return; }
+  if (target?.dataset.category) { const picker = target.closest(".reward-category-picker"); if (picker) { picker.querySelectorAll(".reward-category-choice").forEach(choice => choice.classList.toggle("selected", choice === target)); const hidden = picker.parentElement.querySelector('input[name="category"]'); if (hidden) hidden.value = target.dataset.category; } return; }
+  if (target?.dataset.goalCategory) { const picker = target.closest(".goal-category-picker"); if (picker) { picker.querySelectorAll(".goal-category-choice").forEach(choice => choice.classList.toggle("selected", choice === target)); const hidden = picker.parentElement.querySelector('input[name="category"]'); if (hidden) hidden.value = target.dataset.goalCategory; } return; }
   if (target?.dataset.editChild) { openChildForm(target.dataset.editChild); return; }
   if (target?.dataset.removeChild) { removeChild(target.dataset.removeChild); return; }
   if (target?.dataset.removeChore) { requestRemoveChore(target.dataset.removeChore); return; }
@@ -263,6 +358,7 @@ function handleClick(event) {
   if (target?.dataset.activate) { activateChore(target.dataset.activate); return; }
   if (target?.dataset.editCatalogue) { editCatalogue(target.dataset.editCatalogue); return; }
   if (target?.dataset.deleteCatalogue) { deleteCatalogue(target.dataset.deleteCatalogue); return; }
+  if (target?.dataset.removeReward) { removeReward(target.dataset.removeReward); return; }
   if (target?.dataset.scroll) { document.querySelector(`#${target.dataset.scroll}`).scrollIntoView({ behavior: "smooth" }); return; }
   if (target?.dataset.chore) { completeChore(target.dataset.chore); return; }
   if (target?.dataset.reward) { buyReward(target.dataset.reward); return; }
@@ -275,6 +371,7 @@ document.addEventListener("click", handleClick);
 document.querySelector("#chore-form").addEventListener("submit", saveCatalogueChore);
 document.querySelector("#reward-form").addEventListener("submit", addReward);
 document.querySelector("#goal-form").addEventListener("submit", saveGoal);
+document.querySelector("#goal-child-select").addEventListener("change", syncGoalCategoryPicker);
 document.querySelector("#child-form").addEventListener("submit", createChild);
 document.querySelector("#confirm-reward").addEventListener("click", confirmReward);
 document.querySelector("#confirm-remove-chore").addEventListener("click", confirmRemoveChore);
