@@ -165,35 +165,83 @@ function migrateChore(old, childId) {
   return { id: old.id || `${childId}-${Date.now()}-${Math.random()}`, assignedChildId: old.assignedChildId || childId, catalogueId: old.catalogueId || catalogue?.id, name: old.name || localized(catalogue?.name) || "Pligt", points: Number(old.points) || catalogue?.points || 5, category: old.category || localized(catalogue?.category) || "Familie", completion: old.completion || localized(catalogue?.completion) || "Opgaven er helt færdig.", period: old.period || "today", deadline: old.deadline || "Når det passer med behovet", status: old.status === "approved" ? "approved" : old.status || "active", icon: old.icon || catalogue?.icon || iconFor(old.category), createdAt: old.createdAt || new Date().toISOString(), completedAt: old.completedAt };
 }
 
+// Shared migration/normalization logic used for both local (localStorage) and cloud (Supabase) loaded state.
+function normalizeLoadedState(old) {
+  const legacyChildren = Array.isArray(old.children) ? old.children : Object.entries(old.children || {}).map(([id, child]) => ({ ...child, id, avatar: child.avatar || (id === "vega" ? "⭐" : "⚡") }));
+  const pinState = normalizeParentPin(old);
+  const next = { ...clone(defaultState), ...old, ...pinState, children: legacyChildren, language: old.language || localStorage.getItem("mychores-language") || "da", catalogue: old.catalogue?.length ? old.catalogue : clone(defaultCatalogue), rewards: old.rewards?.length ? old.rewards : clone(defaultRewards) };
+  next.rewards.forEach(reward => { if (rewardCategoryLabels[reward.category]) return; const fallback = defaultRewards.find(item => item.id === reward.id) || defaultRewards.find(item => localized(item.name, "da").toLowerCase() === String(reward.name?.da || reward.name?.en || reward.name || "").toLowerCase()); reward.category = fallback?.category || "other"; });
+  next.selectedChild = next.children.some(child => child.id === old.selectedChild) ? old.selectedChild : next.children[0]?.id || null;
+  next.children.forEach((child, index) => {
+    child.id = child.id || `child-${Date.now()}-${index}`;
+    child.avatar = child.avatar || avatarChoices[index % avatarChoices.length];
+    child.bank = Number.isFinite(child.bank) ? child.bank : Number(child.points) || 0;
+    child.goal = child.goal || { name: { da: "Mit mål", en: "My goal" }, cost: 1000, icon: "🎯" };
+    child.goal.category = goalCategoryLabels[child.goal.category] ? child.goal.category : "other";
+    child.transactions = Array.isArray(child.transactions) ? child.transactions : [];
+    child.chores = (child.chores || []).map(chore => migrateChore(chore, child.id));
+  });
+  const currentWeek = weekKey();
+  if (next.weekKey && next.weekKey !== currentWeek) next.children.forEach(child => child.chores.forEach(chore => { if (chore.period === "weekly" && chore.status === "approved") { chore.status = "active"; chore.completedAt = null; } }));
+  next.weekKey = currentWeek;
+  return next;
+}
+
 function loadState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return clone(defaultState);
     const old = JSON.parse(saved);
-    const legacyChildren = Array.isArray(old.children) ? old.children : Object.entries(old.children || {}).map(([id, child]) => ({ ...child, id, avatar: child.avatar || (id === "vega" ? "⭐" : "⚡") }));
-    const pinState = normalizeParentPin(old);
-    const next = { ...clone(defaultState), ...old, ...pinState, children: legacyChildren, language: old.language || localStorage.getItem("mychores-language") || "da", catalogue: old.catalogue?.length ? old.catalogue : clone(defaultCatalogue), rewards: old.rewards?.length ? old.rewards : clone(defaultRewards) };
-    next.rewards.forEach(reward => { if (rewardCategoryLabels[reward.category]) return; const fallback = defaultRewards.find(item => item.id === reward.id) || defaultRewards.find(item => localized(item.name, "da").toLowerCase() === String(reward.name?.da || reward.name?.en || reward.name || "").toLowerCase()); reward.category = fallback?.category || "other"; });
-    next.selectedChild = next.children.some(child => child.id === old.selectedChild) ? old.selectedChild : next.children[0]?.id || null;
-    next.children.forEach((child, index) => {
-      child.id = child.id || `child-${Date.now()}-${index}`;
-      child.avatar = child.avatar || avatarChoices[index % avatarChoices.length];
-      child.bank = Number.isFinite(child.bank) ? child.bank : Number(child.points) || 0;
-      child.goal = child.goal || { name: { da: "Mit mål", en: "My goal" }, cost: 1000, icon: "🎯" };
-      child.goal.category = goalCategoryLabels[child.goal.category] ? child.goal.category : "other";
-      child.transactions = Array.isArray(child.transactions) ? child.transactions : [];
-      child.chores = (child.chores || []).map(chore => migrateChore(chore, child.id));
-    });
-    const currentWeek = weekKey();
-    if (next.weekKey && next.weekKey !== currentWeek) next.children.forEach(child => child.chores.forEach(chore => { if (chore.period === "weekly" && chore.status === "approved") { chore.status = "active"; chore.completedAt = null; } }));
-    next.weekKey = currentWeek;
+    const next = normalizeLoadedState(old);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     return next;
   } catch (error) { return clone(defaultState); }
 }
 
 state = loadState();
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); localStorage.setItem("mychores-language", state.language); }
+
+// True once a Supabase hydration attempt (success, no-user, or error) has finished; gates automatic uploads
+// so a device can never push its local/default state to the cloud before it has had a chance to hydrate.
+let cloudHydrationComplete = false;
+
+// Fetches ONLY the `data` column for the authenticated user's family row. Never touches localStorage.
+async function loadStateFromSupabase() {
+  if (!supabaseClient) return null;
+  const user = await supabaseGetUser();
+  if (!user) return null;
+  const { data: row, error } = await supabaseClient.from("families").select("data").eq("id", 1).eq("owner_id", user.id).maybeSingle();
+  if (error) { console.error("Failed to load state from Supabase:", error); return null; }
+  if (!row || !row.data || Object.keys(row.data).length === 0) return null;
+  return row.data;
+}
+
+// Replaces local state with cloud state (if any) and re-renders; otherwise preserves current local state.
+async function hydrateStateFromSupabase() {
+  try {
+    const cloudData = await loadStateFromSupabase();
+    if (cloudData) {
+      const next = normalizeLoadedState(cloudData);
+      state = next;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem("mychores-language", next.language);
+      render();
+    }
+  } catch (error) { console.error("Failed to hydrate state from Supabase:", error); }
+  finally { cloudHydrationComplete = true; }
+}
+
+// Fire-and-forget cloud save: updates ONLY families.data for the authenticated user's row (id = 1).
+// Never inserts a row and never touches id/owner_id/created_at. Any failure is only logged.
+function autoUploadStateToSupabase() {
+  if (!supabaseClient || !cloudHydrationComplete) return;
+  supabaseGetUser().then(user => {
+    if (!user) return;
+    return supabaseClient.from("families").update({ data: state }).eq("id", 1).eq("owner_id", user.id);
+  }).then(result => { if (result?.error) console.error("Automatic Supabase upload failed:", result.error); })
+    .catch(error => console.error("Automatic Supabase upload failed:", error));
+}
+
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); localStorage.setItem("mychores-language", state.language); autoUploadStateToSupabase(); }
 function currentChild() { return state.children.find(child => child.id === state.selectedChild); }
 function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character])); }
 function showToast(message) { const toast = document.querySelector("#toast"); toast.className = "toast show"; toast.textContent = message; clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.className = "toast", 2600); }
@@ -395,3 +443,5 @@ document.querySelector("#change-pin-form").addEventListener("submit", event => {
 document.querySelector("#language-select").addEventListener("change", event => { state.language = event.target.value; saveState(); render(); });
 render();
 if (hasFamily() && sessionStorage.getItem("mychores-profile-selected") !== "true") openProfileGate();
+// Non-blocking: local state has already rendered; this replaces it with cloud state (if any) once it arrives.
+hydrateStateFromSupabase();
