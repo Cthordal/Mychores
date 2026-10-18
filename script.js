@@ -1,4 +1,5 @@
 const STORAGE_KEY = "mychores-prototype-v1";
+const invalidLegacyGoalNames = new Set(["christian thordal"]);
 
 // ===== Supabase cloud sync configuration (foundation only, not yet used) =====
 // TODO: paste your real Supabase project values below.
@@ -56,6 +57,38 @@ async function uploadCurrentStateToSupabase() {
 }
 window.uploadCurrentStateToSupabase = uploadCurrentStateToSupabase;
 // ===== End Supabase cloud sync configuration =====
+
+const childSidebarNav = ["Oversigt", "Mine pligter", "Mine præmier", "Min kalender", "Min statistik", "Indstillinger"];
+const parentSidebarNav = ["Oversigt", "Børn", "Pligter", "Præmier", "Kalender", "Statistik", "Indstillinger"];
+const childMobileNav = ["Hjem", "Pligter", "Præmier", "Profil"];
+const parentMobileNav = ["Oversigt", "Børn", "Pligter", "Præmier"];
+
+function renderSidebarLabels() {
+  const isChild = state.mode === "child";
+  document.querySelector(".app-shell")?.classList.toggle("parent-mode-shell", !isChild);
+  const childName = currentChild()?.name || "VEGA";
+  const brandName = isChild ? "MYCHORES" : "MY CHORES";
+  const brandSubtitle = isChild ? `HEJ ${childName.toUpperCase()}!` : "FORÆLDRE";
+  const brandEl = document.querySelector("#brand-name");
+  const subtitleEl = document.querySelector("#brand-subtitle");
+  if (brandEl) brandEl.textContent = brandName;
+  if (subtitleEl) subtitleEl.textContent = brandSubtitle;
+
+  document.querySelectorAll(".app-nav .nav-link").forEach((button, index) => {
+    const labels = isChild ? childSidebarNav : parentSidebarNav;
+    const label = button.querySelector("span:last-child");
+    if (label) label.textContent = labels[index] || labels[labels.length - 1];
+    button.classList.toggle("hidden", isChild && index >= childSidebarNav.length);
+    const activeRoute = isChild ? ["overview", "chores", "rewards", "calendar", "statistics", "settings"][index] : ["overview", "children", "chores", "rewards", "calendar", "statistics", "settings"][index];
+    button.classList.toggle("active", activeRoute === (isChild ? childRoute : parentRoute));
+  });
+
+  document.querySelectorAll(".mobile-nav .nav-link").forEach((button, index) => {
+    const labels = isChild ? childMobileNav : parentMobileNav;
+    const label = button.querySelector("span:last-child");
+    if (label) label.textContent = labels[index] || labels[labels.length - 1];
+  });
+}
 
 const translations = {
   da: {
@@ -131,16 +164,62 @@ const defaultRewards = [
 ];
 
 const avatarChoices = ["⚽", "🏀", "🎮", "🚀", "🦊", "🐼", "🐯", "🦁", "🦄", "⭐", "⚡", "🔥", "🌈", "🎧", "🛹", "🍀"];
-const characterAssets = { Vega: "Assets/Vega app.png", Vidar: "Assets/Vidar app.png" };
-const choreIllustrations = { "dishwasher-empty": "Assets/opvasker billede.png", "dishwasher-fill": "Assets/Fyld opvasker.png", trash: "Assets/tag-skraldet-ud.png", laundry: "Assets/laeg-toej-sammen.png", table: "Assets/daek-bord.png", "clear-table": "Assets/ryd-af-efter-aftensmad.png", "school-bag": "Assets/pak-skole-sportstaske.png", sheets: "Assets/skift-sengetoej.png", cook: "Assets/lav-mad-med-voksen.png", room: "Assets/ryd-op-vaerelset.png" };
-// Vega-specific chore illustrations; only used when the chore's assigned child is Vega.
-const vegaChoreIllustrations = { "dishwasher-empty": "Assets/vega-opvasker-billede.png", "dishwasher-fill": "Assets/vega-fyld-opvasker.png", trash: "Assets/vega-tag-skraldet-ud.png", laundry: "Assets/vega-laeg-toej-sammen.png", "clear-table": "Assets/vega-ryd-af-efter-aftensmad.png", "school-bag": "Assets/vega-pak-skole-sportstaske.png", sheets: "Assets/vega-skift-sengetoej.png", cook: "Assets/vega-lav-mad-med-voksen.png", room: "Assets/vega-ryd-op-vaerelset.png" };
+const childCharacterAssets = {
+  vega: "Assets/App Billeder/Vega profil.png",
+  vidar: "Assets/App Billeder/Vidar profil.png"
+};
+const parentChildCardAssets = {
+  vega: "Assets/App Billeder/Vega profil.png",
+  vidar: "Assets/App Billeder/Vidar profil.png"
+};
+const characterChoreIllustrations = {
+  vega: {
+    "dishwasher-empty": "Assets/App Billeder/Vega tøm opvasker.png",
+    "dishwasher-fill": "Assets/App Billeder/Vega fyld i beskidt opvasker.png",
+    trash: "Assets/App Billeder/Vega gå ud med skrald.png",
+    laundry: "Assets/App Billeder/Vega læg tøj på plads.png",
+    "clear-table": "Assets/App Billeder/Vega ryd af bordet.png",
+    sheets: "Assets/App Billeder/Vega red seng.png",
+    cook: "Assets/App Billeder/Vega lav mad med en voksen.png",
+    room: "Assets/App Billeder/Vega ryd op.png"
+  },
+
+  vidar: {
+    "dishwasher-empty": "Assets/App Billeder/Vidar tøm opvasker.png",
+    "dishwasher-fill": "Assets/App Billeder/Vidar fyld beskidt opvasker.png",
+    laundry: "Assets/App Billeder/Vidar læg tøj på plads.png",
+    sheets: "Assets/App Billeder/Vidar red seng.png"
+  }
+};
+const genericChoreIllustrations = {
+  "dishwasher-empty": "Assets/generic-koekken-madhjaelp.png",
+  "dishwasher-fill": "Assets/generic-koekken-madhjaelp.png",
+  trash: "Assets/generic-praktisk-hjaelp.png",
+  laundry: "Assets/generic-rengoering.png",
+  table: "Assets/generic-koekken-madhjaelp.png",
+  "clear-table": "Assets/generic-rengoering.png",
+  "school-bag": "Assets/generic-praktisk-hjaelp.png",
+  sheets: "Assets/generic-rengoering.png",
+  cook: "Assets/generic-koekken-madhjaelp.png",
+  room: "Assets/generic-rengoering.png"
+};
+const genericCategoryIllustrations = {
+  køkken: "Assets/generic-koekken-madhjaelp.png", kitchen: "Assets/generic-koekken-madhjaelp.png",
+  mad: "Assets/generic-koekken-madhjaelp.png", food: "Assets/generic-koekken-madhjaelp.png",
+  tøj: "Assets/generic-rengoering.png", clothes: "Assets/generic-rengoering.png",
+  værelse: "Assets/generic-rengoering.png", room: "Assets/generic-rengoering.png",
+  skole: "Assets/generic-praktisk-hjaelp.png", school: "Assets/generic-praktisk-hjaelp.png",
+  familie: "Assets/generic-praktisk-hjaelp.png", family: "Assets/generic-praktisk-hjaelp.png",
+  sport: "Assets/generic-praktisk-hjaelp.png", sports: "Assets/generic-praktisk-hjaelp.png",
+  have: "Assets/generic-have-udendoers.png", garden: "Assets/generic-have-udendoers.png",
+  kæledyr: "Assets/generic-kaeledyr.png", pets: "Assets/generic-kaeledyr.png"
+};
 const rewardCategoryOrder = ["snacks", "screen", "movie", "experience", "food", "sport", "things", "other"];
 const rewardCategoryLabels = { snacks: { da: "Slik & snacks", en: "Candy & snacks" }, screen: { da: "Skærm & gaming", en: "Screen & gaming" }, movie: { da: "Film & hygge", en: "Movie & cosy time" }, experience: { da: "Tur & oplevelse", en: "Outing & experience" }, food: { da: "Mad & treat", en: "Food & treat" }, sport: { da: "Sport & aktivitet", en: "Sport & activity" }, things: { da: "Ting & ønsker", en: "Things & wishes" }, other: { da: "Andet", en: "Other" } };
 const rewardCategoryAssets = { snacks: "Assets/reward-slik-snacks.png", screen: "Assets/reward-skaerm-gaming.png", movie: "Assets/reward-film-hygge.png", experience: "Assets/reward-tur-oplevelse.png", food: "Assets/reward-mad-treat.png", sport: "Assets/reward-sport-aktivitet.png", things: "Assets/reward-ting-oensker.png", other: "Assets/reward-andet.png" };
 const goalCategoryOrder = ["transport", "gaming", "hobby", "style", "sport", "experience", "money", "other"];
 const goalCategoryLabels = { transport: { da: "Transport & udstyr", en: "Transport & gear" }, gaming: { da: "Gaming & elektronik", en: "Gaming & electronics" }, hobby: { da: "Legetøj & hobby", en: "Toys & hobbies" }, style: { da: "Tøj & stil", en: "Clothes & style" }, sport: { da: "Sport & fritid", en: "Sport & leisure" }, experience: { da: "Oplevelser & ture", en: "Experiences & trips" }, money: { da: "Spare op / penge", en: "Saving up / money" }, other: { da: "Andet", en: "Other" } };
-const goalCategoryAssets = { transport: "Assets/goal-transport-udstyr.png", gaming: "Assets/goal-gaming-elektronik.png", hobby: "Assets/goal-legetoej-hobby.png", style: "Assets/goal-toej-stil.png", sport: "Assets/goal-sport-fritid.png", experience: "Assets/goal-oplevelser-ture.png", money: "Assets/goal-spare-op-penge.png", other: "Assets/goal-andet.png" };
+const goalCategoryAssets = { transport: "Assets/App Billeder/goal-transport-udstyr.png", gaming: "Assets/App Billeder/goal-gaming-elektronik.png", hobby: "Assets/App Billeder/goal-legetoej-hobby.png", style: "Assets/App Billeder/goal-toej-stil.png", sport: "Assets/App Billeder/goal-sport-fritid.png", experience: "Assets/App Billeder/goal-oplevelser-ture.png", money: "Assets/App Billeder/goal-spare-op-penge.png", other: null };
 const defaultState = { language: "da", selectedChild: null, mode: "child", parentPin: "1234", parentPinChanged: false, catalogue: defaultCatalogue, rewards: defaultRewards, children: [] };
 
 let state;
@@ -148,14 +227,30 @@ let toastTimer;
 let pendingMode;
 let pendingReward;
 let pendingRemoveChore;
+let parentRoute = "overview";
+let childRoute = "overview";
 
 function t(key, values = {}) { let value = (translations[state.language] || translations.da)[key] || key; Object.entries(values).forEach(([name, replacement]) => { value = value.replace(`{${name}}`, replacement); }); return value; }
 function localized(value, language = state?.language || "da") { return typeof value === "object" ? value[language] || value.da || value.en : value; }
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
+function normalizeGoalName(name) {
+  const validName = value => typeof value === "string" && value.trim() && !invalidLegacyGoalNames.has(value.trim().toLowerCase());
+  if (typeof name === "string" && validName(name)) return { da: name.trim(), en: name.trim() };
+  if (name && typeof name === "object" && !Array.isArray(name)) {
+    const da = validName(name.da) ? name.da.trim() : "";
+    const en = validName(name.en) ? name.en.trim() : "";
+    if (da || en) return { da: da || en, en: en || da };
+  }
+  return { da: "Mit mål", en: "My goal" };
+}
 function makeTransaction(amount, type, description) { return { amount, type, description: typeof description === "object" ? description : { da: description, en: description }, timestamp: new Date().toISOString() }; }
 function iconFor(category) { return categoryIcons[category] || "✦"; }
 function choreName(chore) { return chore.nameData ? localized(chore.nameData) : localized(state.catalogue.find(item => item.id === chore.catalogueId)?.name) || chore.name; }
 function categoryText(category) { return localized(categoryLabels[category] || category); }
+function childAssetKey(child) { return String(child?.name || child?.id || "").trim().toLowerCase(); }
+function getChildProfileImage(child) { return childCharacterAssets[childAssetKey(child)] || child?.profileImage || null; }
+function getParentChildCardImage(child) { return parentChildCardAssets[childAssetKey(child)] || getChildProfileImage(child); }
+function choreIllustrationFor(chore, child) { const key = childAssetKey(child); const category = String(localized(chore.category || "")).trim().toLowerCase(); return characterChoreIllustrations[key]?.[chore.catalogueId] || genericChoreIllustrations[chore.catalogueId] || genericCategoryIllustrations[category]; }
 function deadlineText(chore) { if (chore.period === "weekly") return `${t("mustBeDone")} ${t("beforeSunday")}`; if (chore.catalogueId === "dishwasher-empty" || chore.name === "Tøm opvaskemaskinen") return t("noNeed"); if (chore.catalogueId === "table" || chore.name === "Dæk bord") return t("beforeEating"); if (chore.catalogueId === "school-bag" || chore.name === "Pak skoletasken") return t("beforeBed"); return chore.deadline || t("mustDo"); }
 function weekKey(date = new Date()) { const copy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())); const day = copy.getUTCDay() || 7; copy.setUTCDate(copy.getUTCDate() + 4 - day); const yearStart = new Date(Date.UTC(copy.getUTCFullYear(), 0, 1)); const week = Math.ceil((((copy - yearStart) / 86400000) + 1) / 7); return `${copy.getUTCFullYear()}-${week}`; }
 function normalizeParentPin(savedState) { const explicitlyChanged = savedState.parentPinChanged === true; return { parentPin: explicitlyChanged && /^\d{4}$/.test(savedState.parentPin || "") ? savedState.parentPin : "1234", parentPinChanged: explicitlyChanged }; }
@@ -176,7 +271,7 @@ function normalizeLoadedState(old) {
     child.id = child.id || `child-${Date.now()}-${index}`;
     child.avatar = child.avatar || avatarChoices[index % avatarChoices.length];
     child.bank = Number.isFinite(child.bank) ? child.bank : Number(child.points) || 0;
-    child.goal = child.goal || { name: { da: "Mit mål", en: "My goal" }, cost: 1000, icon: "🎯" };
+    child.goal = { ...(child.goal && typeof child.goal === "object" ? child.goal : { cost: 1000, icon: "🎯" }), name: normalizeGoalName(child.goal?.name) };
     child.goal.category = goalCategoryLabels[child.goal.category] ? child.goal.category : "other";
     child.transactions = Array.isArray(child.transactions) ? child.transactions : [];
     child.chores = (child.chores || []).map(chore => migrateChore(chore, child.id));
@@ -255,17 +350,12 @@ function applyTranslations() {
   document.documentElement.lang = state.language;
   document.title = `${t("brand")} | ${t("tagline")}`;
   document.querySelector("#brand-name").textContent = t("brand");
-  document.querySelector("#tagline").textContent = t("tagline");
-  document.querySelector("#rewards-tagline").textContent = t("tagline");
-  document.querySelector("#goal-page-tagline").textContent = t("tagline");
-  document.querySelector("#greeting-label").textContent = t("greeting");
   document.querySelectorAll("[data-i18n]").forEach(element => { const control = element.querySelector("input, select, textarea"); if (control) { const textNode = Array.from(element.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim()); if (textNode) textNode.textContent = `${t(element.dataset.i18n)}`; } else element.textContent = t(element.dataset.i18n); });
   document.querySelector("#profile-gate-title").textContent = t("whoAreYou");
   document.querySelector("#profile-gate-title").nextElementSibling.textContent = t("chooseProfile");
   document.querySelector(".profile-return").textContent = `⇄ ${t("switchProfile")}`;
   document.querySelectorAll(".dialog-close").forEach(button => button.setAttribute("aria-label", t("close")));
   if (!document.querySelector("#pin-dialog").open) { document.querySelector("#pin-title").textContent = state.language === "da" ? "Forældrekode" : "Parent PIN"; }
-  document.querySelector(".profile-row .eyebrow").textContent = t("yourDay");
   document.querySelector("#dialog-category").textContent = t("chores");
   document.querySelector(".dialog-rule b").textContent = t("whenDone");
   const placeholders = { name: state.language === "da" ? "fx Fodr katten" : "e.g. Feed the cat", points: "10", completion: state.language === "da" ? "Beskriv det færdige resultat" : "Describe the finished result" };
@@ -281,13 +371,21 @@ function applyTranslations() {
 
 function render() {
   applyTranslations();
+  renderSidebarLabels();
   renderProfiles();
   if (!hasFamily()) { document.querySelector(".child-view").classList.add("hidden"); document.querySelector(".parent-view").classList.add("hidden"); openSetup(); return; }
   closeSetup();
   document.querySelector(".child-view").classList.toggle("hidden", state.mode !== "child");
   document.querySelector(".parent-view").classList.toggle("hidden", state.mode !== "parent");
   document.querySelectorAll(".mode-button").forEach(button => button.classList.toggle("active", button.dataset.mode === state.mode));
-  if (state.mode === "child") renderChildView(); else renderParentView();
+  if (state.mode === "child") { renderChildView(); applyChildRoute(); } else renderParentView();
+}
+
+function applyChildRoute() {
+  document.querySelectorAll(".child-route-section").forEach(section => {
+    const visible = section.dataset.childView.split(" ").includes(childRoute);
+    section.classList.toggle("hidden", !visible);
+  });
 }
 
 const groups = [
@@ -299,40 +397,45 @@ const groups = [
 function renderChoreCard(chore) {
   const pending = chore.status === "pending";
   const assignedChild = state.children.find(child => child.id === (chore.assignedChildId || currentChild()?.id));
-  const illustration = (assignedChild?.name === "Vega" && vegaChoreIllustrations[chore.catalogueId]) || choreIllustrations[chore.catalogueId];
-  return `<article class="chore-item ${pending ? "pending-item" : ""}" data-detail="${chore.id}"><p class="chore-name">${escapeHtml(choreName(chore))}</p><div class="chore-illustration" aria-hidden="true">${illustration ? `<img src="${illustration}" alt="">` : ""}</div><span class="chore-points"><strong>+${chore.points}</strong><small>${t("points")}</small></span><div class="chore-meta"><span class="chore-category">${escapeHtml(categoryText(chore.category))}</span><p class="chore-deadline">${escapeHtml(deadlineText(chore))}</p><button class="detail-link" data-detail="${chore.id}" type="button">${t("detail")}</button></div>${pending ? `<span class="pending-label">${t("waiting")}</span>` : `<button class="done-button" data-chore="${chore.id}" type="button">${t("done")}</button>`}</article>`;
+  const illustration = choreIllustrationFor(chore, assignedChild);
+  return `<article class="chore-item ${pending ? "pending-item" : ""}" data-detail="${chore.id}"><p class="chore-name">${escapeHtml(choreName(chore))}</p><div class="chore-illustration" aria-hidden="true">${illustration ? `<img src="${illustration}" alt="" onerror="this.style.display='none'">` : `<span class="chore-image-fallback">✦</span>`}</div><span class="chore-points"><strong>+${chore.points}</strong><small>${t("points")}</small></span>${pending ? `<span class="pending-label">${t("waiting")}</span>` : `<button class="done-button" data-chore="${chore.id}" type="button">✓ ${t("done")}</button>`}</article>`;
 }
 
 function renderChoreGroups(child) {
-  return groups.map(group => {
-    const chores = child.chores.filter(chore => (chore.assignedChildId || child.id) === child.id && chore.status !== "approved" && (chore.period || "today") === group.key);
-    const weekly = group.key === "weekly" ? child.chores.filter(chore => chore.period === "weekly") : [];
-    const done = weekly.filter(chore => chore.status === "approved").length;
-    return `<section class="chore-group"><div class="chore-group-heading"><div><span class="section-label">${localized(group.label)}</span><h3>${localized(group.title)}</h3><p>${localized(group.hint)}</p></div>${group.key === "weekly" ? `<span class="group-progress">${t("weeklyProgress", { done, total: weekly.length })}</span>` : ""}</div><div class="chore-list">${chores.length ? chores.map(renderChoreCard).join("") : `<div class="chore-empty-state">${t("noActive")}</div>`}</div></section>`;
-  }).join("");
+  const chores = child.chores.filter(chore => (chore.assignedChildId || child.id) === child.id && chore.status !== "approved");
+  return chores.length ? chores.map(renderChoreCard).join("") : `<div class="chore-empty-state">${t("noActive")}</div>`;
 }
 
 function renderChildView() {
   const child = currentChild();
   const active = child.chores.filter(chore => chore.status !== "approved");
+  const childKey = childAssetKey(child);
+  const childView = document.querySelector(".child-view");
+  childView.classList.remove("child-vega", "child-vidar", "child-dynamic");
+  childView.classList.add(childKey === "vega" ? "child-vega" : childKey === "vidar" ? "child-vidar" : "child-dynamic");
   document.querySelector("#greeting-name").textContent = child.name;
-  document.querySelector("#header-avatar").textContent = child.avatar;
+  document.querySelector("#header-avatar").textContent = child.name.slice(0, 1).toUpperCase();
   const characterImage = document.querySelector(".child-character");
-  const characterAsset = characterAssets[child.name];
+  const characterAsset = getChildProfileImage(child);
+  characterImage.onerror = () => { characterImage.classList.add("hidden"); document.querySelector("#header-avatar").classList.add("is-visible"); };
+  document.querySelector("#header-avatar").classList.toggle("is-visible", !characterAsset);
   characterImage.classList.toggle("hidden", !characterAsset);
   if (characterAsset) characterImage.src = characterAsset;
+  else characterImage.removeAttribute("src");
   document.querySelector("#points-total").textContent = child.bank.toLocaleString(state.language === "da" ? "da-DK" : "en-US");
   document.querySelector(".points-unit").textContent = t("points");
   document.querySelector("#chore-count").textContent = `${active.filter(chore => chore.status === "active").length} ${state.language === "da" ? "tilbage" : "left"}`;
-  const goal = child.goal;
-  const goalName = localized(goal.name);
-  const percent = Math.min(100, Math.round(child.bank / goal.cost * 100));
-  const goalAsset = goalCategoryAssets[goal.category] || goalCategoryAssets.other;
-  const goalRemaining = Math.max(0, goal.cost - child.bank);
-  document.querySelector("#goal-content").innerHTML = `<div class="goal-illustration" aria-hidden="true"><img src="${goalAsset}" alt=""></div><p class="goal-title">${escapeHtml(goalName)}</p><p class="goal-score">${child.bank.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} / ${goal.cost.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} ${t("points")}</p><div class="progress-track"><div class="progress-fill" style="width:${percent}%"></div></div><p class="goal-percent">${percent}%</p><p class="goal-remaining">${goalRemaining.toLocaleString()} ${t("points")} ${state.language === "da" ? "tilbage" : "left"}</p>`;
-  document.querySelector("#goal-page-illustration").innerHTML = `<img src="${goalAsset}" alt="">`;
+  const goal = child.goal || { name: { da: "Mit mål", en: "My goal" }, cost: 0, category: "other" };
+  const goalName = localized(goal.name || { da: "Mit mål", en: "My goal" });
+  const goalCost = Number(goal.cost) || 0;
+  const percent = goalCost > 0 ? Math.min(100, Math.round(child.bank / goalCost * 100)) : 0;
+  const goalAsset = goalCategoryAssets[goal.category] || null;
+  const goalIllustration = goalAsset ? `<img src="${goalAsset}" alt="">` : `<span class="goal-illustration-fallback">${escapeHtml(goal.icon || "🎯")}</span>`;
+  const goalRemaining = Math.max(0, goalCost - child.bank);
+  document.querySelector("#goal-content").innerHTML = `<div class="goal-illustration" aria-hidden="true">${goalIllustration}</div><p class="goal-title">${escapeHtml(goalName)}</p><p class="goal-score">${child.bank.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} / ${goalCost.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} ${t("points")}</p><div class="progress-track"><div class="progress-fill" style="width:${percent}%"></div></div><p class="goal-percent">${percent}%</p><p class="goal-remaining">${goalRemaining.toLocaleString()} ${t("points")} ${state.language === "da" ? "tilbage" : "left"}</p>`;
+  document.querySelector("#goal-page-illustration").innerHTML = goalAsset ? `<img src="${goalAsset}" alt="">` : goalIllustration;
   document.querySelector("#goal-page-title").textContent = goalName;
-  document.querySelector("#goal-page-score").textContent = `${child.bank.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} / ${goal.cost.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} ${t("points")}`;
+  document.querySelector("#goal-page-score").textContent = `${child.bank.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} / ${goalCost.toLocaleString(state.language === "da" ? "da-DK" : "en-US")} ${t("points")}`;
   document.querySelector("#goal-page-fill").style.width = `${percent}%`;
   document.querySelector("#goal-page-percent").textContent = `${percent}%`;
   document.querySelector("#goal-page-remaining").textContent = `${goalRemaining.toLocaleString()} ${t("points")} ${state.language === "da" ? "tilbage" : "left"}`;
@@ -344,11 +447,126 @@ function renderChildView() {
   document.querySelector("#reward-grid").innerHTML = state.rewards.map(reward => { const name = localized(reward.name); const canAfford = child.bank >= reward.cost; const remaining = Math.max(0, reward.cost - child.bank); const asset = rewardCategoryAssets[reward.category] || rewardCategoryAssets.other; return `<article class="reward-card"><span class="reward-name">${escapeHtml(name)}</span><div class="reward-illustration" aria-hidden="true"><img src="${asset}" alt=""></div><span class="reward-cost">${reward.cost} ${t("points")}</span><button class="reward-action ${canAfford ? "can-afford" : "needs-more"}" data-reward="${reward.id}" type="button">${canAfford ? t("selectReward") : `${remaining} ${t("points")} ${state.language === "da" ? "tilbage" : "to go"}`}</button></article>`; }).join("");
 }
 
-function renderParentView() {
+function renderParentOverview() {
+  const parentDate = document.querySelector("#parent-date");
+  if (parentDate) parentDate.textContent = new Intl.DateTimeFormat(state.language === "da" ? "da-DK" : "en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
+
   const approvals = state.children.flatMap(child => child.chores.filter(chore => chore.status === "pending").map(chore => ({ ...chore, childId: child.id, childName: child.name })));
-  document.querySelector("#approval-count").textContent = `${approvals.length} ${state.language === "da" ? "venter" : "waiting"}`;
+  const totalApprovedThisWeek = state.children.reduce((sum, child) => sum + child.chores.filter(chore => chore.status === "approved").length, 0);
+  const totalChores = state.children.reduce((sum, child) => sum + child.chores.length, 0);
+  const completionPercent = totalChores ? Math.min(100, Math.round(totalApprovedThisWeek / totalChores * 100)) : 0;
+  const earnedThisWeek = state.children.reduce((sum, child) => sum + child.chores.filter(chore => chore.status === "approved").reduce((childSum, chore) => childSum + Number(chore.points || 0), 0), 0);
+  const recentActivity = state.children.flatMap(child => (child.transactions || []).slice(0, 5).map(item => ({ ...item, childId: child.id, childName: child.name, timestamp: item.timestamp || new Date().toISOString() }))).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 4);
+
+  document.querySelector("#parent-children-grid").innerHTML = [...state.children].sort((a,b) => { const rank = n => /^vega$/i.test(n) ? 0 : /^vidar$/i.test(n) ? 1 : 2; return rank(a.name)-rank(b.name); }).map(child => {
+    const goal = child.goal || { name: { da: "Mit mål", en: "My goal" }, cost: 0, category: "other" };
+    const localizedGoalName = goal.name && typeof goal.name === "object" && !Array.isArray(goal.name) ? localized(goal.name) : "";
+    const goalName = typeof localizedGoalName === "string" && localizedGoalName.trim() ? localizedGoalName.trim() : "Mit mål";
+    const goalProgress = Math.min(100, Math.round((child.bank / Math.max(1, goal.cost)) * 100));
+    const completed = child.chores.filter(chore => chore.status === "approved").length;
+    const accent = childAssetKey(child) === "vega" ? "child-vega" : childAssetKey(child) === "vidar" ? "child-vidar" : "child-dynamic";
+    const profileImage = getParentChildCardImage(child);
+    const identity = profileImage ? `<span class="parent-child-avatar parent-child-image"><img src="${profileImage}" alt=""></span>` : `<span class="parent-child-avatar">${escapeHtml(child.avatar)}</span>`;
+    return `<button class="parent-child-card ${accent}" data-child="${child.id}" type="button"><div class="parent-child-card-top">${identity}<div class="parent-child-card-info"><strong>${escapeHtml(child.name)}</strong><span class="child-points"><b>★</b> ${child.bank} ${t("points")}</span><div class="parent-child-goal"><span>${escapeHtml(goalName)}</span><div class="goal-progress-row"><div class="mini-progress"><span style="width:${goalProgress}%"></span></div><b>${goalProgress}%</b></div><small>${completed} af ${child.chores.length} pligter klaret</small></div></div><span class="child-card-arrow" aria-hidden="true">›</span></div></button>`;
+  }).join("");
+  document.querySelectorAll("#parent-children-grid .parent-child-image img").forEach(image => {
+    image.addEventListener("error", () => {
+      const child = state.children.find(item => item.id === image.closest(".parent-child-card")?.dataset.child);
+      const fallback = document.createElement("span");
+      fallback.className = "parent-child-avatar";
+      fallback.textContent = child?.avatar || "";
+      image.parentElement.replaceWith(fallback);
+    }, { once: true });
+  });
+
+  document.querySelector("#parent-quick-actions").innerHTML = [
+    { label: "Opret ny pligt", icon: "+", action: "open-chore-form" },
+    { label: "Opret ny præmie", icon: "🎁", action: "open-reward-form" },
+    { label: "Rediger pligter", icon: "✎", action: "open-catalogue" },
+    { label: "Se alle pligter", icon: "●●", action: "open-chores" }
+  ].map(item => `<button class="parent-quick-action" data-action="${item.action}" type="button"><span class="quick-action-icon" aria-hidden="true">${item.icon}</span><span>${item.label}</span></button>`).join("");
+
+  document.querySelector("#status-metrics").innerHTML = `
+    <div class="status-title-icon" aria-hidden="true">▥</div>
+    <div class="metric-box"><span>Pligter klaret</span><div class="metric-progress"><i style="width:${completionPercent}%"></i></div><strong>${completionPercent}%</strong></div>
+    <div class="metric-box"><span>Point optjent</span><div class="metric-progress metric-progress-blue"><i style="width:${Math.min(100, earnedThisWeek ? 55 : 0)}%"></i></div><strong>+${earnedThisWeek}</strong></div>
+  `;
+
+  document.querySelector("#recent-activity").innerHTML = recentActivity.length ? recentActivity.map(item => {
+    const child = state.children.find(c => c.id === item.childId) || state.children.find(c => c.name === item.childName);
+    const key = child ? childAssetKey(child) : "";
+    const avatar = key === "vega" ? "Assets/master-vega.png" : key === "vidar" ? "Assets/master-vidar.png" : (child ? getChildProfileImage(child) : "");
+    const amount = Number(item.amount || 0);
+    const badgeClass = amount < 0 ? "activity-points negative" : "activity-points";
+    const description = escapeHtml(localized(item.description || { da: item.type || "Aktivitet", en: item.type || "Activity" }));
+    const time = new Date(item.timestamp).toLocaleString(state.language === "da" ? "da-DK" : "en-US", { weekday:"short", hour:"2-digit", minute:"2-digit" });
+    return `<div class="activity-row"><span class="activity-avatar">${avatar ? `<img src="${avatar}" alt="">` : escapeHtml(item.childName.slice(0,1).toUpperCase())}</span><span class="activity-copy"><b>${escapeHtml(item.childName)}</b> ${description}<small>${time}</small></span>${amount ? `<span class="${badgeClass}">${amount > 0 ? "+" : ""}${amount}</span>` : ""}</div>`;
+  }).join("") : '<div class="empty-state master-empty"><span class="activity-empty-icon">◷</span><b>Ingen aktivitet endnu</b><small>Når børnene klarer pligter eller bruger point, vises det her.</small></div>';
+
+  const reminderCount = approvals.length;
+  document.querySelector("#reminder-list").innerHTML = `
+    <div class="reminder-badge ${reminderCount ? "has-items" : ""}">${reminderCount}</div>
+    <button class="reminder-item reminder-button" data-parent-route="chores" type="button"><span class="reminder-check"></span><span>Godkend ${reminderCount} ${reminderCount === 1 ? "pligt" : "pligter"}</span></button>
+    <button class="reminder-item reminder-button" data-parent-route="rewards" type="button"><span class="reminder-check"></span><span>Tjek nye præmieønsker</span></button>
+    <button class="reminder-item reminder-button" data-parent-route="chores" type="button"><span class="reminder-check"></span><span>Planlæg næste uge</span></button>
+  `;
+}
+
+function ensureParentRouteStructure() {
+  const goalForm = document.querySelector("#goal-form");
+  if (!goalForm || document.querySelector(".parent-goal-panel")) return;
+  const panel = document.createElement("section");
+  panel.className = "parent-section parent-goal-panel";
+  panel.innerHTML = `<div class="section-heading"><div><p class="eyebrow">MÅL</p><h2>Administrér mål</h2></div></div>`;
+  panel.append(goalForm);
+  document.querySelector(".parent-admin-content")?.append(panel);
+}
+
+function renderParentView() {
+  ensureParentRouteStructure();
+  const parentView = document.querySelector(".parent-view");
+  parentView?.classList.remove("parent-route-overview", "parent-route-children", "parent-route-chores", "parent-route-rewards", "parent-route-calendar", "parent-route-statistics", "parent-route-settings");
+  parentView?.classList.add(`parent-route-${parentRoute}`);
+  const approvals = state.children.flatMap(child => child.chores.filter(chore => chore.status === "pending").map(chore => ({ ...chore, childId: child.id, childName: child.name })));
+  const statusText = approvals.length ? (state.language === "da" ? "Kræver godkendelse" : "Needs approval") : (state.language === "da" ? "Ingen handling nødvendig" : "No action needed");
+  const statusEl = document.querySelector("#approval-count");
+  if (statusEl) {
+    statusEl.textContent = statusText;
+    statusEl.classList.toggle("is-alert", approvals.length > 0);
+    statusEl.classList.toggle("is-ok", approvals.length === 0);
+  }
+  renderParentOverview();
+  const routeSections = {
+    children: [document.querySelector(".family-panel"), document.querySelector(".parent-goal-panel")],
+    chores: [document.querySelector(".activation-panel"), document.querySelector("#approval-list")?.closest(".parent-section"), document.querySelector("#active-parent-list")?.closest(".parent-section"), document.querySelector(".management-grid")],
+    rewards: [document.querySelector(".management-grid"), document.querySelector(".parent-goal-panel")]
+  };
+  document.querySelectorAll(".parent-admin-content > .parent-section, .parent-admin-content > .management-grid").forEach(section => section.classList.add("parent-route-hidden"));
+  document.querySelector('.parent-route[data-parent-view="overview"]')?.classList.toggle("parent-route-hidden", parentRoute !== "overview");
+  if (parentRoute !== "overview") {
+    (routeSections[parentRoute] || []).forEach(section => section?.classList.remove("parent-route-hidden"));
+    const managementGrid = document.querySelector(".management-grid");
+    if (managementGrid) managementGrid.querySelectorAll(":scope > .parent-section").forEach((section, index) => section.classList.toggle("parent-route-hidden", parentRoute === "rewards" ? index !== 1 : parentRoute === "chores" ? index !== 0 : true));
+  } else {
+  }
+  document.querySelectorAll('.parent-tool-route').forEach(section => section.classList.add('parent-route-hidden'));
+  document.querySelector(`.parent-tool-route[data-parent-view="${parentRoute}"]`)?.classList.remove('parent-route-hidden');
+  const calendarList = document.querySelector('#parent-calendar-list');
+  if (calendarList) {
+    const rows = state.children.flatMap(child => child.chores.map(chore => ({child, chore})));
+    calendarList.innerHTML = rows.length ? rows.map(({child,chore}) => `<div class="master-route-row"><b>${escapeHtml(child.name)}</b><span>${escapeHtml(choreName(chore))}</span><small>${chore.status === "pending" ? "Venter på godkendelse" : chore.status === "approved" ? "Klaret" : "Aktiv"}</small></div>`).join('') : '<div class="empty-state">Ingen pligter i kalenderen endnu.</div>';
+  }
+  const statsGrid = document.querySelector('#parent-statistics-grid');
+  if (statsGrid) {
+    const all = state.children.flatMap(child => child.chores);
+    const done = all.filter(chore => chore.status === 'approved').length;
+    const pending = all.filter(chore => chore.status === 'pending').length;
+    const points = state.children.reduce((sum, child) => sum + Number(child.bank || 0), 0);
+    statsGrid.innerHTML = `<div class="master-stat-card"><strong>${done}</strong><span>Pligter klaret</span></div><div class="master-stat-card"><strong>${pending}</strong><span>Venter på godkendelse</span></div><div class="master-stat-card"><strong>${points}</strong><span>Point i banken</span></div><div class="master-stat-card"><strong>${state.children.length}</strong><span>Børn</span></div>`;
+  }
+  const parentLanguage = document.querySelector('#parent-language-select');
+  if (parentLanguage) parentLanguage.value = state.language;
   document.querySelector("#activation-child-label").textContent = currentChild().name;
-  document.querySelector("#parent-child-switch").innerHTML = state.children.map(child => `<button class="parent-child ${child.id === state.selectedChild ? "active" : ""}" data-child="${child.id}" type="button">${escapeHtml(child.name)}</button>`).join("");
   document.querySelector("#approval-list").innerHTML = approvals.length ? approvals.map(item => `<article class="approval-item"><span class="chore-icon">${item.icon || "✦"}</span><div class="chore-copy"><p class="chore-name">${escapeHtml(choreName(item))}</p><span class="approval-child">${item.childName} · +${item.points} ${t("points")}</span></div><div class="approval-actions"><button class="approve-button" data-approval="approve" data-child="${item.childId}" data-chore="${item.id}" type="button">${t("approve")}</button><button class="reject-button" data-approval="reject" data-child="${item.childId}" data-chore="${item.id}" type="button">${t("reject")}</button></div></article>`).join("") : `<div class="empty-state">${t("noWaiting")}</div>`;
   const active = currentChild().chores.filter(chore => chore.status === "active");
   document.querySelector("#active-parent-list").innerHTML = active.length ? active.map(chore => `<div class="active-parent-item"><span>${chore.icon || "✦"}</span><div><b>${escapeHtml(choreName(chore))}</b><small>${currentChild().name} · +${chore.points} ${t("points")}</small></div><button class="remove-chore-button" data-remove-chore="${chore.id}" type="button">${t("removeChore")}</button></div>`).join("") : `<div class="empty-state">${t("noActive")}</div>`;
@@ -356,7 +574,9 @@ function renderParentView() {
   renderRewardManage();
   document.querySelector("#goal-child-select").innerHTML = state.children.map(child => `<option value="${child.id}">${escapeHtml(child.name)}</option>`).join("");
   syncGoalCategoryPicker();
-  document.querySelector("#family-list").innerHTML = state.children.map(child => `<div class="family-row"><span class="family-avatar">${child.avatar}</span><div><b>${escapeHtml(child.name)}</b><small>${child.bank} ${t("points")}</small></div><button class="catalogue-edit" data-edit-child="${child.id}" type="button">${t("editChild")}</button><button class="catalogue-delete" data-remove-child="${child.id}" type="button">×</button></div>`).join("");
+  document.querySelector("#family-list").innerHTML = state.children.map(child => `<div class="family-row"><span class="family-avatar">${child.avatar}</span><div><b>${escapeHtml(child.name)}</b><small>${child.bank} ${t("points")}</small></div><button class="catalogue-edit" data-child-bank="${child.id}" type="button">${t("history")}</button><button class="catalogue-edit" data-edit-child="${child.id}" type="button">${t("editChild")}</button><button class="catalogue-delete" data-remove-child="${child.id}" type="button">×</button></div>`).join("");
+  const manualPointsChild = document.querySelector("#manual-points-child");
+  if (manualPointsChild) manualPointsChild.innerHTML = `<option value="">Vælg barn</option>${state.children.map(child => `<option value="${escapeHtml(child.id)}">${escapeHtml(child.name)}</option>`).join("")}`;
 }
 
 function renderProfiles() { document.querySelector("#gate-profiles").innerHTML = state.children.map(child => `<button class="gate-profile" data-profile="${child.id}" type="button"><span class="avatar">${child.avatar}</span><b>${escapeHtml(child.name)}</b></button>`).join(""); }
@@ -383,6 +603,38 @@ function renderRewardManage() {
 }
 
 function addTransaction(child, amount, type, description) { child.transactions.unshift(makeTransaction(amount, type, description)); }
+function adjustChildPoints(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const feedback = document.querySelector("#manual-points-feedback");
+  const data = new FormData(form);
+  const child = state.children.find(item => item.id === data.get("child"));
+  const rawAmount = String(data.get("amount") || "").trim();
+  const amount = Number(rawAmount);
+  const operation = data.get("operation");
+  const showError = message => {
+    feedback.textContent = message;
+    feedback.className = "manual-points-feedback is-error";
+  };
+
+  if (!child) { showError("Vælg et barn."); return; }
+  if (!/^\d+$/.test(rawAmount) || !Number.isSafeInteger(amount) || amount <= 0) { showError("Indtast et positivt helt antal point."); return; }
+  if (operation !== "add" && operation !== "subtract") { showError("Vælg, om point skal lægges til eller trækkes fra."); return; }
+  if (operation === "subtract" && amount > Number(child.bank || 0)) { showError("Barnets bank har ikke nok point."); return; }
+
+  const signedAmount = operation === "add" ? amount : -amount;
+  child.bank = Number(child.bank || 0) + signedAmount;
+  const description = String(data.get("reason") || "").trim() || "Manuel pointjustering";
+  addTransaction(child, signedAmount, "manual-adjustment", description);
+  child.transactions[0].childId = child.id;
+  child.transactions[0].childName = child.name;
+  form.reset();
+  saveState();
+  render();
+  feedback.textContent = `Pointændringen er gemt for ${child.name}.`;
+  feedback.className = "manual-points-feedback is-success";
+}
+
 function completeChore(choreId) { const chore = currentChild().chores.find(item => item.id === choreId); if (!chore || chore.status !== "active") return; chore.status = "pending"; chore.completedAt = new Date().toISOString(); saveState(); render(); showCelebration(); }
 function handleApproval(data) { const child = state.children.find(item => item.id === data.child); const chore = child?.chores.find(item => item.id === data.chore); if (!child || !chore) return; if (data.approval === "approve") { const before = child.bank; chore.status = "approved"; child.bank += chore.points; const catalogueItem = state.catalogue.find(item => item.id === chore.catalogueId); addTransaction(child, chore.points, "earned", catalogueItem?.name || { da: chore.name, en: chore.name }); sessionStorage.setItem("mychores-approval-feedback", JSON.stringify({ childId: data.child, earned: chore.points, before, after: child.bank })); showToast(`${child.name} +${chore.points} ${t("points")}`); } else { chore.status = "active"; showToast(t("reject")); } saveState(); render(); }
 function activateChore(catalogueId) { const item = state.catalogue.find(chore => chore.id === catalogueId); const child = currentChild(); if (!item || !child) return; if (child.chores.some(chore => chore.catalogueId === catalogueId && chore.status === "active")) { showToast(t("alreadyActive")); return; } child.chores.push({ id: `${catalogueId}-${Date.now()}`, assignedChildId: child.id, catalogueId, name: localized(item.name), nameData: item.name, points: item.points, category: localized(item.category), completion: localized(item.completion), period: catalogueId === "room" || catalogueId === "sheets" ? "weekly" : "today", deadline: catalogueId === "room" || catalogueId === "sheets" ? "Senest søndag" : t("mustDo"), status: "active", icon: item.icon, createdAt: new Date().toISOString() }); saveState(); render(); showToast(t("activated")); }
@@ -403,11 +655,24 @@ function handleClick(event) {
   const card = event.target.closest("[data-detail]");
   if (!target && !card) return;
   if (target?.dataset.mode) { if (target.dataset.mode === "parent" && sessionStorage.getItem("mychores-parent-unlocked") !== "true") { pendingMode = target.dataset.mode; openParentPinDialog(); return; } if (target.dataset.mode === "child") { sessionStorage.removeItem("mychores-parent-unlocked"); } state.mode = target.dataset.mode; saveState(); render(); return; }
+  if (target?.dataset.parentRoute) {
+    if (state.mode === "child") {
+      const index = [...document.querySelectorAll(".app-nav .nav-link")].indexOf(target);
+      childRoute = ["overview", "chores", "rewards", "calendar", "statistics", "settings", "settings"][index] || "overview";
+      render();
+    } else {
+      parentRoute = target.dataset.parentRoute;
+      state.mode = "parent";
+      saveState();
+      render();
+    }
+    return;
+  }
   if (target?.dataset.approval) { handleApproval(target.dataset); return; }
   if (target?.hasAttribute("data-profile-reset")) { sessionStorage.removeItem("mychores-profile-selected"); state.mode = "child"; saveState(); render(); openProfileGate(); return; }
   if (target?.hasAttribute("data-open-change-pin")) { document.querySelector("#change-pin-dialog").showModal(); return; }
   if (target?.hasAttribute("data-dialog-close")) { target.closest("dialog").close(); return; }
-  if (target?.dataset.profile) { state.selectedChild = target.dataset.profile; saveState(); closeProfileGate(); render(); return; }
+  if (target?.dataset.profile) { state.selectedChild = target.dataset.profile; state.mode = "child"; childRoute = "overview"; saveState(); closeProfileGate(); render(); return; }
   if (target?.hasAttribute("data-start-setup")) { openChildForm(); return; }
   if (target?.hasAttribute("data-ready")) { closeSetup(); sessionStorage.setItem("mychores-profile-selected", "true"); render(); return; }
   if (target?.hasAttribute("data-add-child")) { openChildForm(); return; }
@@ -415,14 +680,59 @@ function handleClick(event) {
   if (target?.dataset.category) { const picker = target.closest(".reward-category-picker"); if (picker) { picker.querySelectorAll(".reward-category-choice").forEach(choice => choice.classList.toggle("selected", choice === target)); const hidden = picker.parentElement.querySelector('input[name="category"]'); if (hidden) hidden.value = target.dataset.category; } return; }
   if (target?.dataset.goalCategory) { const picker = target.closest(".goal-category-picker"); if (picker) { picker.querySelectorAll(".goal-category-choice").forEach(choice => choice.classList.toggle("selected", choice === target)); const hidden = picker.parentElement.querySelector('input[name="category"]'); if (hidden) hidden.value = target.dataset.goalCategory; } return; }
   if (target?.dataset.editChild) { openChildForm(target.dataset.editChild); return; }
+  if (target?.dataset.childBank) { state.selectedChild = target.dataset.childBank; saveState(); openBank(); return; }
   if (target?.dataset.removeChild) { removeChild(target.dataset.removeChild); return; }
   if (target?.dataset.removeChore) { requestRemoveChore(target.dataset.removeChore); return; }
-  if (target?.dataset.child) { state.selectedChild = target.dataset.child; saveState(); render(); return; }
+  if (target?.dataset.child) { state.selectedChild = target.dataset.child; state.mode = "child"; childRoute = "overview"; saveState(); render(); return; }
+  if (target?.closest(".app-nav") && state.mode === "parent") {
+    const index = [...document.querySelectorAll(".app-nav .nav-link")].indexOf(target);
+    parentRoute = ["overview", "children", "chores", "rewards", "calendar", "statistics", "settings"][index] || "overview";
+    render();
+    return;
+  }
+  if (target?.closest(".app-nav") && state.mode === "child") {
+    const index = [...document.querySelectorAll(".app-nav .nav-link")].indexOf(target);
+    childRoute = ["overview", "chores", "rewards", "calendar", "statistics", "settings", "settings"][index] || "overview";
+    render();
+    return;
+  }
+  if (target?.dataset.action) {
+    const action = target.dataset.action;
+    parentRoute = action === "open-reward-form" ? "rewards" : "chores";
+    state.mode = "parent";
+    render();
+    if (action === "open-chore-form") {
+      const form = document.querySelector("#chore-form");
+      form?.scrollIntoView({ behavior: "smooth", block: "center" });
+      form?.querySelector('input[name="name"]')?.focus();
+      return;
+    }
+    if (action === "open-reward-form") {
+      const form = document.querySelector("#reward-form");
+      form?.scrollIntoView({ behavior: "smooth", block: "center" });
+      form?.querySelector('input[name="name"]')?.focus();
+      return;
+    }
+    if (action === "open-catalogue") {
+      const list = document.querySelector("#catalogue-list");
+      list?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (action === "open-chores") {
+      document.querySelector(".activation-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+  }
   if (target?.dataset.activate) { activateChore(target.dataset.activate); return; }
   if (target?.dataset.editCatalogue) { editCatalogue(target.dataset.editCatalogue); return; }
   if (target?.dataset.deleteCatalogue) { deleteCatalogue(target.dataset.deleteCatalogue); return; }
   if (target?.dataset.removeReward) { removeReward(target.dataset.removeReward); return; }
-  if (target?.dataset.scroll) { document.querySelector(`#${target.dataset.scroll}`).scrollIntoView({ behavior: "smooth" }); return; }
+  if (target?.dataset.scroll) {
+    const destination = document.querySelector(`#${target.dataset.scroll}`);
+    destination?.classList.remove("hidden");
+    destination?.scrollIntoView({ behavior: "smooth" });
+    return;
+  }
   if (target?.dataset.chore) { completeChore(target.dataset.chore); return; }
   if (target?.dataset.reward) { buyReward(target.dataset.reward); return; }
   if (target?.id === "bank-card") { openBank(); return; }
@@ -436,11 +746,13 @@ document.querySelector("#reward-form").addEventListener("submit", addReward);
 document.querySelector("#goal-form").addEventListener("submit", saveGoal);
 document.querySelector("#goal-child-select").addEventListener("change", syncGoalCategoryPicker);
 document.querySelector("#child-form").addEventListener("submit", createChild);
+document.querySelector("#manual-points-form").addEventListener("submit", adjustChildPoints);
 document.querySelector("#confirm-reward").addEventListener("click", confirmReward);
 document.querySelector("#confirm-remove-chore").addEventListener("click", confirmRemoveChore);
 document.querySelector("#pin-form").addEventListener("submit", event => { event.preventDefault(); const input = document.querySelector("#pin-input"); if (!/^\d{4}$/.test(input.value) || input.value !== state.parentPin) { input.value = ""; showToast(t("incorrectPin")); return; } sessionStorage.setItem("mychores-parent-unlocked", "true"); document.querySelector("#pin-dialog").close(); state.mode = pendingMode || "parent"; pendingMode = null; saveState(); render(); });
 document.querySelector("#change-pin-form").addEventListener("submit", event => { event.preventDefault(); const data = new FormData(event.currentTarget); const current = data.get("currentPin"); const next = data.get("newPin"); const confirm = data.get("confirmNewPin"); if (current !== state.parentPin || !/^\d{4}$/.test(next) || next !== confirm) { showToast(current !== state.parentPin ? t("incorrectPin") : (state.language === "da" ? "Koderne matcher ikke." : "PINs do not match.")); return; } state.parentPin = next; state.parentPinChanged = true; event.currentTarget.reset(); document.querySelector("#change-pin-dialog").close(); saveState(); showToast(state.language === "da" ? "Forældrekode ændret." : "Parent PIN changed."); });
 document.querySelector("#language-select").addEventListener("change", event => { state.language = event.target.value; saveState(); render(); });
+document.querySelector("#parent-language-select")?.addEventListener("change", event => { state.language = event.target.value; const main = document.querySelector("#language-select"); if (main) main.value = state.language; saveState(); render(); });
 render();
 if (hasFamily() && sessionStorage.getItem("mychores-profile-selected") !== "true") openProfileGate();
 // Non-blocking: local state has already rendered; this replaces it with cloud state (if any) once it arrives.
